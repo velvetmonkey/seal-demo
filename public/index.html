@@ -59,9 +59,9 @@
   </section>
   <aside>
     <h2>The guarantee</h2>
-    <div class="row proven"><div class="k">Proven</div><div class="v">For this canonical request and this policy, verdict = DENY, by kernel theorem.</div></div>
-    <div class="row tcb"><div class="k">Trusted (TCB)</div><div class="v">proxy delivers faithfully · sandbox confines · parser canonical</div></div>
-    <div class="row notclaimed"><div class="k">Not claimed</div><div class="v">model safety · OS / container security · absence of proxy bugs</div></div>
+    <div class="row proven"><div class="k">Proven</div><div class="v">For this canonical action and trusted config, the combined verdict is allow iff every gating kernel allows, by the composition theorem. Axioms: {propext, Classical.choice, Quot.sound} only.</div></div>
+    <div class="row tcb"><div class="k">Trusted (TCB)</div><div class="v">Lean compiler + runtime · host transport routes faithfully (fail-closed) · SealV2 canonical parser · the C ABI / FFI seam</div></div>
+    <div class="row notclaimed"><div class="k">Not claimed</div><div class="v">model safety · classifier completeness · out-of-band effects · anything outside the MCP boundary</div></div>
     <div class="sub" style="margin-top:14px">The kernel proves the <b>decision</b>, not the whole stack. Honesty is the pitch.</div>
   </aside>
 </main>

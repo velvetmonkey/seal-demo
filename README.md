@@ -33,6 +33,10 @@ One verified artifact, four modes (same WASM core):
 - **edge** — Cloudflare / Fastly / Vercel (all run WASM), sub-ms verdicts on the agent's hot path, no central chokepoint
 - **native** — full production server
 
+## Publication boundary (read before flipping public)
+
+This repo is **private pre-award**. The `seal-host` kernels carry an ARIA Track 1 covenant: only the **spec layer** (theorem statements, threat model, TCB) publishes ahead of submission; **proof sources at grant kickoff**; the **implementation stays under a 12-month commercialisation clawback**. When this demo goes public it ships only the **compiled black-box evaluator + this shell** — never the kernel or host source.
+
 ## Status
 
 Scaffold. The front-end shell runs today with a **stubbed evaluator** (`public/index.html`, see the seam marked `sealEvaluate`). The real verified PDP compiles from the private `seal-host` kernels to WASM and plugs in at that seam. See [`docs/BUILD.md`](docs/BUILD.md).
