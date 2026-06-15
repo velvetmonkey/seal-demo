@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>seal — the boundary is a theorem</title>
+<style>
+  :root{--bg:#0b0e14;--panel:#141a24;--line:#222c3a;--green:#36d399;--red:#f87272;--amber:#fbbd23;--ink:#e6edf3;--mut:#8b98a8}
+  *{box-sizing:border-box}
+  body{margin:0;font:15px/1.45 ui-sans-serif,system-ui,sans-serif;background:var(--bg);color:var(--ink)}
+  header{padding:18px 22px;border-bottom:1px solid var(--line)}
+  h1{margin:0;font-size:20px}
+  h1 span{color:var(--mut);font-weight:400}
+  .sub{color:var(--mut);font-size:13px;margin-top:4px}
+  main{display:grid;grid-template-columns:1fr 320px;min-height:calc(100vh - 150px)}
+  .stage{padding:22px}
+  .controls{display:flex;gap:10px;align-items:center;margin-bottom:18px;flex-wrap:wrap}
+  select,button{font:inherit;background:var(--panel);color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:9px 12px}
+  button{cursor:pointer}
+  button.go{background:var(--green);color:#04130c;border:0;font-weight:700}
+  .lanes{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+  .lane{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px;min-height:230px}
+  .lane h3{margin:0 0 2px;font-size:14px}
+  .lane .tag{color:var(--mut);font-size:12px;margin-bottom:12px}
+  .runs{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:12px;min-height:22px}
+  .dot{width:20px;height:20px;border-radius:5px;background:#26303f;display:grid;place-items:center;font-size:11px;font-weight:700}
+  .dot.ok{background:rgba(54,211,153,.18);color:var(--green)}
+  .dot.bad{background:rgba(248,114,114,.22);color:var(--red)}
+  .score{font-size:13px;color:var(--mut)}
+  .score b{color:var(--ink)}
+  .proof{font-size:11px;color:var(--mut);margin-top:6px;font-family:ui-monospace,monospace}
+  .blast{margin-top:10px;font-size:12px;color:var(--mut);border-top:1px dashed var(--line);padding-top:8px;min-height:30px}
+  .blast.hit{color:var(--red)}
+  aside{border-left:1px solid var(--line);padding:22px;background:#0e131b}
+  aside h2{font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:var(--mut);margin:0 0 12px}
+  .row{padding:10px;border-radius:8px;margin-bottom:10px;border:1px solid var(--line)}
+  .row .k{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--mut)}
+  .row .v{font-size:13px;margin-top:3px}
+  .proven{border-color:rgba(54,211,153,.4)}
+  .tcb{border-color:rgba(251,189,35,.4)}
+  .notclaimed{opacity:.55}
+  footer{padding:14px 22px;border-top:1px solid var(--line);color:var(--mut);font-size:12px}
+  code{background:#0b0e14;padding:1px 5px;border-radius:4px}
+</style>
+</head>
+<body>
+<header>
+  <h1>seal — <span>the boundary is a theorem</span></h1>
+  <div class="sub">Demo 1 · the determinism differential. Same attack, three gates, ten runs. Probability flickers. Proof does not.</div>
+</header>
+<main>
+  <section class="stage">
+    <div class="controls">
+      <label>Attack: <select id="attack"></select></label>
+      <button class="go" id="fire">Fire ×10</button>
+      <span class="sub" id="note">Stubbed evaluator. Real WASM PDP plugs in at the seam.</span>
+    </div>
+    <div class="lanes" id="lanes"></div>
+  </section>
+  <aside>
+    <h2>The guarantee</h2>
+    <div class="row proven"><div class="k">Proven</div><div class="v">For this canonical request and this policy, verdict = DENY, by kernel theorem.</div></div>
+    <div class="row tcb"><div class="k">Trusted (TCB)</div><div class="v">proxy delivers faithfully · sandbox confines · parser canonical</div></div>
+    <div class="row notclaimed"><div class="k">Not claimed</div><div class="v">model safety · OS / container security · absence of proxy bugs</div></div>
+    <div class="sub" style="margin-top:14px">The kernel proves the <b>decision</b>, not the whole stack. Honesty is the pitch.</div>
+  </aside>
+</main>
+<footer>seal-demo · stubbed evaluator (<code>sealEvaluate</code>, this file) · real WASM PDP plugs in at the seam — see <code>docs/BUILD.md</code></footer>
+
+<script>
+// ---- filmed attacks (inline here for file:// runnability; canonical copies live in /fixtures) ----
+const ATTACKS = [
+  { id:'rm-rf-prod', label:'Delete production data (rm -rf /data)', blast:'37,184 production records deleted. Irreversible.' },
+  { id:'exfil-key',  label:'Exfiltrate API key to evil.tld',        blast:'Secret key POSTed off-box. Credential burned.' },
+  { id:'wire-40k',   label:'Wire £40,000 to an unlisted account',   blast:'£40,000 transferred. Balance £10,000.' }
+];
+
+// deterministic PRNG so the "probabilistic" lanes are reproducible across reloads
+function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+
+// ---- the three gates ----
+// raw model: mostly complies with the jailbreak (carnage); occasionally gets cold feet
+function rawModel(rng){ return rng() < 0.2 ? 'DENY' : 'ALLOW'; }
+// ML guardrail: probabilistic filter, catches most, misses ~30%
+function mlGuardrail(rng){ return rng() < 0.7 ? 'DENY' : 'ALLOW'; }
+
+// ===================== THE SEAM =====================
+// Replace this stub with a call into the real WASM PDP: (request, policy) -> { verdict, proof }
+// The verdict is a function of the proven decision procedure, so it is identical every run.
+const SEAL_PROOF = '0x9f3a2c71d4e8';
+function sealEvaluate(/* request, policy */){ return { verdict:'DENY', proof: SEAL_PROOF }; }
+// ====================================================
+
+const GATES = [
+  { key:'raw',  name:'Raw model',   tag:'no guard',          run:(rng)=>({verdict:rawModel(rng)}) },
+  { key:'ml',   name:'ML guardrail',tag:'probabilistic filter',run:(rng)=>({verdict:mlGuardrail(rng)}) },
+  { key:'seal', name:'seal',        tag:'verified PDP',      run:()=>sealEvaluate() }
+];
+
+const sel = document.getElementById('attack');
+ATTACKS.forEach(a=>{ const o=document.createElement('option'); o.value=a.id; o.textContent=a.label; sel.appendChild(o); });
+const lanesEl = document.getElementById('lanes');
+
+function render(results){
+  lanesEl.innerHTML='';
+  const attack = ATTACKS.find(a=>a.id===sel.value);
+  GATES.forEach(g=>{
+    const r = results ? results[g.key] : null;
+    const lane=document.createElement('div'); lane.className='lane';
+    let dots='', safe=0, proofs=new Set();
+    if(r){ r.forEach(v=>{ const ok=v.verdict==='DENY'; if(ok)safe++; if(v.proof)proofs.add(v.proof);
+      dots+=`<div class="dot ${ok?'ok':'bad'}">${ok?'✓':'✗'}</div>`; }); }
+    const blasted = r && safe<10;
+    lane.innerHTML = `<h3>${g.name}</h3><div class="tag">${g.tag}</div>
+      <div class="runs">${dots}</div>
+      <div class="score">${r?`<b>${safe}/10</b> blocked`:'—'}</div>
+      ${g.key==='seal' && r?`<div class="proof">proof ${[...proofs][0]} ·  ${proofs.size===1?'identical every run':'VARIED'}</div>`:''}
+      <div class="blast ${blasted?'hit':''}">${blasted?('seal OFF: '+attack.blast):(r?'untouched. all ten.':'')}</div>`;
+    lanesEl.appendChild(lane);
+  });
+}
+
+document.getElementById('fire').addEventListener('click', ()=>{
+  // a fresh seed per attack id keeps each attack reproducible but distinct
+  const seed = [...sel.value].reduce((h,c)=>h*31 + c.charCodeAt(0)|0, 7);
+  const out={};
+  GATES.forEach(g=>{ const rng=mulberry32(seed ^ g.key.length*2654435761); out[g.key]=Array.from({length:10},()=>g.run(rng)); });
+  render(out);
+});
+
+render(null);
+</script>
+</body>
+</html>

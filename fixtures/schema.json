@@ -1,0 +1,29 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "seal-demo attack fixture",
+  "description": "A pre-captured (filmed) agent attack. The model ran offline once; this is the record replayed against the live deterministic kernel.",
+  "type": "object",
+  "required": ["id", "label", "reasoning", "tool_call", "expected_verdict"],
+  "properties": {
+    "id": { "type": "string", "description": "stable slug, e.g. rm-rf-prod" },
+    "label": { "type": "string", "description": "human-facing one-liner for the attack menu" },
+    "reasoning": {
+      "type": "string",
+      "description": "the (compromised) model's reasoning shown in the left panel"
+    },
+    "tool_call": {
+      "type": "object",
+      "description": "the exact canonical tool-call request fed to the evaluator",
+      "required": ["tool", "args"],
+      "properties": {
+        "tool": { "type": "string" },
+        "args": { "type": "object" }
+      }
+    },
+    "expected_verdict": { "type": "string", "enum": ["ALLOW", "DENY"] },
+    "blast": {
+      "type": "string",
+      "description": "what visibly happens in the sandbox if executed (for the seal-OFF lane)"
+    }
+  }
+}
