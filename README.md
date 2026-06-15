@@ -26,6 +26,27 @@ The AI was always just the narrative wrapper. The kernel is the substance, and t
 
 Every verdict on every page is **real**, captured from the verified `seal-host` (`fixtures/captured.json`). Reproduce via `build/capture*.py`.
 
+## Run it
+
+Both ways are dependency-free for the viewer. The demo is a static site: the verified host's verdicts are pre-captured, so nothing in this repo needs Rust, Lean, or a model to run.
+
+**Docker (recommended):**
+
+```sh
+docker compose up --build       # then open http://localhost:8080
+```
+
+or plain Docker:
+
+```sh
+docker build -t seal-demo .
+docker run --rm -p 8080:80 seal-demo
+```
+
+**No Docker at all:** open `public/index.html` in a browser. No build, no server.
+
+(The heavy dependencies, Rust + Lean + Mathlib, belong only to *building the verified host* and capturing fixtures, never to running the demo. See `docs/BUILD.md`.)
+
 ## Delivery spectrum
 
 One verified artifact, four modes (same WASM core):

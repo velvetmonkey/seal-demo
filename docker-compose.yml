@@ -1,0 +1,8 @@
+services:
+  seal-demo:
+    build: .
+    image: seal-demo:latest
+    container_name: seal-demo
+    ports:
+      - "8080:80"
+    restart: unless-stopped
