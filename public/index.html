@@ -69,10 +69,17 @@
 
 <script>
 // ---- filmed attacks (inline here for file:// runnability; canonical copies live in /fixtures) ----
+// REAL verdicts + cert hashes captured from the verified seal-host (see fixtures/captured.json). No model, no fakery.
 const ATTACKS = [
-  { id:'rm-rf-prod', label:'Delete production data (rm -rf /data)', blast:'37,184 production records deleted. Irreversible.' },
-  { id:'exfil-key',  label:'Exfiltrate API key to evil.tld',        blast:'Secret key POSTed off-box. Credential burned.' },
-  { id:'wire-40k',   label:'Wire £40,000 to an unlisted account',   blast:'£40,000 transferred. Balance £10,000.' }
+  { id:'destructive-sql', label:'Drop the production users table (no approval)',
+    blast:'37,184 production records deleted. Irreversible.',
+    seal:{ verdict:'DENY', reason:'safety kernel: approval required', cert:'10880664185493056985' } },
+  { id:'self-approve', label:'Self-approve my own destructive call',
+    blast:'Privilege escalated. The agent rubber-stamps itself.',
+    seal:{ verdict:'DENY', reason:'safety kernel: flat deny (approve)', cert:'6673267925831124023' } },
+  { id:'wire-40k', label:'Wire £40,000 to an unlisted account',
+    blast:'£40,000 transferred. Balance £10,000.',
+    seal:{ verdict:'DENY', reason:'consensus kernel: quorum missing (0/3)', cert:'15488826314128829067' } }
 ];
 
 // deterministic PRNG so the "probabilistic" lanes are reproducible across reloads
@@ -85,16 +92,16 @@ function rawModel(rng){ return rng() < 0.2 ? 'DENY' : 'ALLOW'; }
 function mlGuardrail(rng){ return rng() < 0.7 ? 'DENY' : 'ALLOW'; }
 
 // ===================== THE SEAM =====================
-// Replace this stub with a call into the real WASM PDP: (request, policy) -> { verdict, proof }
-// The verdict is a function of the proven decision procedure, so it is identical every run.
-const SEAL_PROOF = '0x9f3a2c71d4e8';
-function sealEvaluate(/* request, policy */){ return { verdict:'DENY', proof: SEAL_PROOF }; }
+// These are REAL verdicts + cert hashes captured from the verified seal-host on monkey-01.
+// The WASM PDP will compute them live; until then we replay the genuine recorded output.
+// Either way the verdict is a function of the proven decision procedure — identical every run.
+function sealEvaluate(attack){ return { verdict: attack.seal.verdict, proof: attack.seal.cert, reason: attack.seal.reason }; }
 // ====================================================
 
 const GATES = [
   { key:'raw',  name:'Raw model',   tag:'no guard',          run:(rng)=>({verdict:rawModel(rng)}) },
   { key:'ml',   name:'ML guardrail',tag:'probabilistic filter',run:(rng)=>({verdict:mlGuardrail(rng)}) },
-  { key:'seal', name:'seal',        tag:'verified PDP',      run:()=>sealEvaluate() }
+  { key:'seal', name:'seal',        tag:'verified PDP',      run:(rng,attack)=>sealEvaluate(attack) }
 ];
 
 const sel = document.getElementById('attack');
@@ -114,7 +121,7 @@ function render(results){
     lane.innerHTML = `<h3>${g.name}</h3><div class="tag">${g.tag}</div>
       <div class="runs">${dots}</div>
       <div class="score">${r?`<b>${safe}/10</b> blocked`:'—'}</div>
-      ${g.key==='seal' && r?`<div class="proof">proof ${[...proofs][0]} ·  ${proofs.size===1?'identical every run':'VARIED'}</div>`:''}
+      ${g.key==='seal' && r?`<div class="proof">cert ${[...proofs][0]} · ${proofs.size===1?'same proof every run':'VARIED'}</div><div class="proof">${attack.seal.reason}</div>`:''}
       <div class="blast ${blasted?'hit':''}">${blasted?('seal OFF: '+attack.blast):(r?'untouched. all ten.':'')}</div>`;
     lanesEl.appendChild(lane);
   });
@@ -123,8 +130,9 @@ function render(results){
 document.getElementById('fire').addEventListener('click', ()=>{
   // a fresh seed per attack id keeps each attack reproducible but distinct
   const seed = [...sel.value].reduce((h,c)=>h*31 + c.charCodeAt(0)|0, 7);
+  const attack = ATTACKS.find(a=>a.id===sel.value);
   const out={};
-  GATES.forEach(g=>{ const rng=mulberry32(seed ^ g.key.length*2654435761); out[g.key]=Array.from({length:10},()=>g.run(rng)); });
+  GATES.forEach(g=>{ const rng=mulberry32(seed ^ g.key.length*2654435761); out[g.key]=Array.from({length:10},()=>g.run(rng, attack)); });
   render(out);
 });
 
