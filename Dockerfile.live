@@ -1,0 +1,23 @@
+# seal-demo LIVE — runs the REAL verified seal-host binary behind a thin API.
+# Verdicts are computed live by the actual Lean-verified kernels, not replayed.
+#
+# PRIVATE / LOCAL ONLY: this image bundles the seal-host binary, which is the
+# private pre-award implementation. Do NOT publish this image. The public,
+# deployable demo is the static one (Dockerfile) — replay, no binary.
+#
+# Needs runtime/ populated first: scripts/prepare-runtime.sh
+FROM ubuntu:24.04
+RUN apt-get update && apt-get install -y --no-install-recommends python3 \
+    && rm -rf /var/lib/apt/lists/*
+WORKDIR /app
+COPY runtime/seal-host /app/seal-host
+COPY runtime/mock_mcp_server.py /app/mock_mcp_server.py
+COPY server/decide_server.py /app/decide_server.py
+COPY public /app/public
+RUN chmod +x /app/seal-host
+ENV SEAL_BIN=/app/seal-host \
+    SEAL_MOCK=/app/mock_mcp_server.py \
+    SEAL_PUBLIC=/app/public \
+    PORT=8080
+EXPOSE 8080
+CMD ["python3", "/app/decide_server.py"]

@@ -1,8 +1,13 @@
+# LIVE stack: the real verified seal-host binary deciding behind /api/decide.
+# Run scripts/prepare-runtime.sh once first (copies the private binary into runtime/).
+# For the public, deployable, binary-free static demo instead, build the plain Dockerfile.
 services:
   seal-demo:
-    build: .
-    image: seal-demo:latest
+    build:
+      context: .
+      dockerfile: Dockerfile.live
+    image: seal-demo-live:latest
     container_name: seal-demo
     ports:
-      - "8080:80"
+      - "8080:8080"
     restart: unless-stopped

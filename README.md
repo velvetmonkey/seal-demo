@@ -28,24 +28,29 @@ Every verdict on every page is **real**, captured from the verified `seal-host` 
 
 ## Run it
 
-Both ways are dependency-free for the viewer. The demo is a static site: the verified host's verdicts are pre-captured, so nothing in this repo needs Rust, Lean, or a model to run.
+Two flavours.
 
-**Docker (recommended):**
+### Live — the real verified kernel decides
+
+The actual `seal-host` binary runs behind `POST /api/decide`. Verdicts are computed live by the Lean-verified kernels: open the **Live console** (`/live.html`) and fire your own tool calls. Bundles the private binary, so this is **local only — do not publish this image**.
 
 ```sh
-docker compose up --build       # then open http://localhost:8080
+scripts/prepare-runtime.sh        # copies the seal-host binary into runtime/ (build it first)
+docker compose up --build         # then open http://localhost:8080/live.html
 ```
 
-or plain Docker:
+### Static — replay, public-safe, deployable
+
+Pure HTML/JS with pre-captured verdicts. No binary, no backend, no Rust/Lean/Mathlib. Safe to publish.
 
 ```sh
-docker build -t seal-demo .
+docker build -t seal-demo .       # the plain Dockerfile
 docker run --rm -p 8080:80 seal-demo
 ```
 
-**No Docker at all:** open `public/index.html` in a browser. No build, no server.
+or just open `public/index.html` in a browser.
 
-(The heavy dependencies, Rust + Lean + Mathlib, belong only to *building the verified host* and capturing fixtures, never to running the demo. See `docs/BUILD.md`.)
+The heavy dependencies (Rust + Lean + Mathlib) belong only to *building* the verified host and capturing fixtures, never to running either demo. See `docs/BUILD.md`.
 
 ## Delivery spectrum
 
@@ -62,6 +67,8 @@ This repo is **private pre-award**. The `seal-host` kernels carry an ARIA Track 
 
 ## Status
 
-**v1 complete.** Landing page + three demos, all driven by real captured kernel verdicts. Open `public/index.html` in a browser — no build step, no backend, no AI.
+**v1 complete**, two ways to run:
+- **Static** (`public/index.html`): landing + three demos on pre-captured verdicts. No backend, public-safe, deployable.
+- **Live** (`/live.html`, `Dockerfile.live`): the real `seal-host` binary decides behind `/api/decide`. Genuine verdicts, including a "fire your own tool call" box. Local only (bundles the private binary).
 
-**v1.1 (next): live WASM compute.** Today the verdicts are replayed from genuine recorded output (authentic "filmed not live"). The next step compiles the verified `decide` core from the private `seal-host` kernels to WASM (Lean → C → emscripten) and plugs it in at the `sealEvaluate` seam, so the kernel computes verdicts live in the browser. See [`docs/BUILD.md`](docs/BUILD.md).
+**Next: WASM in-browser compute.** Live mode needs the binary plus a backend. Compiling the verified `decide` core to WASM (Lean → C → emscripten) would put live verdicts in the browser with no backend at all, at the `sealEvaluate` seam. See [`docs/BUILD.md`](docs/BUILD.md).

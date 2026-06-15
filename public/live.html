@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>seal · Live console</title>
+<link rel="stylesheet" href="style.css"/>
+</head>
+<body>
+<nav class="nav">
+  <span class="brand">seal <span>· the boundary is a theorem</span></span>
+  <a href="index.html">Home</a>
+  <a href="demo1.html">1 · Determinism</a>
+  <a href="demo2.html">2 · Policy swap</a>
+  <a href="demo3.html">3 · Confident hallucination</a>
+  <a href="live.html" class="here">▶ Live console</a>
+</nav>
+<div class="wrap">
+  <h1>Live console <span>— the real verified kernel, deciding now</span></h1>
+  <p class="lede">Every verdict on this page is computed <b>live</b> by the actual <code>seal-host</code> binary running in this container. No replay, no model. Your tool call goes over MCP stdio into the verified kernels and the real verdict comes back.</p>
+  <div id="offline" class="soundbite" style="border-color:var(--amber);display:none">
+    The backend is not responding. This page needs the live container: <code>docker compose up</code> (see the README). The static pages still work without it.
+  </div>
+
+  <h2>Curated scenarios</h2>
+  <p class="sub">The same cases as the three demos, but each button runs the real binary right now.</p>
+  <div class="controls">
+    <button id="s-destructive-sql">Drop production table</button>
+    <button id="s-self-approve">Self-approve</button>
+    <button id="s-wire-40k">Wire £40k (no quorum)</button>
+    <button id="s-pay-before">Pay (policy A)</button>
+    <button id="s-pay-after">Pay (policy B: + quorum)</button>
+    <button id="s-store-safe">store: orset.add</button>
+    <button id="s-store-subtle">store: assign</button>
+    <button class="toggle" id="s-determinism">Run "wire £40k" ×10</button>
+  </div>
+
+  <h2>Fire your own tool call</h2>
+  <p class="sub">Craft any call. The real kernel decides. No approval is supplied, so guarded tools fail closed.</p>
+  <div class="controls">
+    <label>tool
+      <select id="tool">
+        <option>db.execute</option><option>payments.send</option><option>store.update</option>
+        <option>session.revoke</option><option>key.use</option><option>approve</option>
+      </select>
+    </label>
+    <input id="args" style="flex:1;min-width:240px;font:inherit;background:var(--panel);color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:9px 12px;font-family:ui-monospace,monospace"
+           value='{"database":"prod","sql":"drop table users"}'/>
+    <button class="go" id="fire">Decide</button>
+  </div>
+
+  <div id="result"></div>
+</div>
+<footer>Real verdicts from the verified <code>seal-host</code> (7 Lean kernels) over <code>POST /api/decide</code>. The model never runs; you supply the tool call, the proven decision procedure judges it.</footer>
+
+<script>
+const result = document.getElementById('result');
+async function decide(body){
+  const r = await fetch('/api/decide', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)});
+  if(!r.ok) throw new Error('http '+r.status);
+  return r.json();
+}
+function certRows(certs){
+  return (certs||[]).map(c=>`<tr><td>${c.kernel}</td><td class="v-${c.verdict}">${c.verdict.toUpperCase()}</td><td>${c.reason}</td><td class="hash">${c.certHash}</td></tr>`).join('');
+}
+function show(res){
+  const deny = res.verdict==='DENY';
+  result.innerHTML = `
+    <div class="verdict-line">Combined verdict: <span class="pill ${deny?'deny':'allow'}">${res.verdict}</span>
+      <span class="sub">${res.tool} · ${res.reason||''}</span></div>
+    <table class="certs"><thead><tr><th>Kernel</th><th>Verdict</th><th>Reason</th><th>Cert hash</th></tr></thead>
+    <tbody>${certRows(res.certs)}</tbody></table>`;
+}
+async function runScenario(s){
+  result.innerHTML = '<p class="sub">running the real binary…</p>';
+  try{ show(await decide({scenario:s})); }catch(e){ offline(); }
+}
+async function determinism(){
+  result.innerHTML = '<p class="sub">running the real binary ×10…</p>';
+  try{
+    const runs = [];
+    for(let i=0;i<10;i++){ runs.push(await decide({scenario:'wire-40k'})); }
+    const hashes = new Set(runs.map(r=>JSON.stringify(r.certs.map(c=>c.certHash))));
+    const dots = runs.map(r=>`<div class="dot ${r.verdict==='DENY'?'ok':'bad'}">${r.verdict==='DENY'?'✓':'✗'}</div>`).join('');
+    result.innerHTML = `<div class="verdict-line"><span class="pill ${runs[0].verdict==='DENY'?'deny':'allow'}">${runs[0].verdict} ×10</span>
+      <span class="sub">${hashes.size===1?'identical certs every run — real determinism':'CERTS VARIED'}</span></div>
+      <div class="runs" style="margin:10px 0">${dots}</div>
+      <table class="certs"><thead><tr><th>Kernel</th><th>Verdict</th><th>Reason</th><th>Cert hash</th></tr></thead>
+      <tbody>${certRows(runs[0].certs)}</tbody></table>`;
+  }catch(e){ offline(); }
+}
+function offline(){ document.getElementById('offline').style.display='block'; result.innerHTML=''; }
+[['s-destructive-sql','destructive-sql'],['s-self-approve','self-approve'],['s-wire-40k','wire-40k'],
+ ['s-pay-before','pay-before'],['s-pay-after','pay-after'],['s-store-safe','store-safe'],['s-store-subtle','store-subtle']]
+ .forEach(([id,s])=>document.getElementById(id).addEventListener('click',()=>runScenario(s)));
+document.getElementById('s-determinism').addEventListener('click', determinism);
+document.getElementById('fire').addEventListener('click', async ()=>{
+  let args; try{ args = JSON.parse(document.getElementById('args').value); }catch(e){ result.innerHTML='<p class="sub" style="color:var(--red)">args must be valid JSON</p>'; return; }
+  result.innerHTML = '<p class="sub">running the real binary…</p>';
+  try{ show(await decide({tool:document.getElementById('tool').value, arguments:args})); }catch(e){ offline(); }
+});
+// probe on load
+decide({scenario:'wire-40k'}).then(()=>{}).catch(offline);
+</script>
+</body>
+</html>

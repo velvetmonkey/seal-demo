@@ -1,0 +1,2 @@
+# the private seal-host binary lives here for the LIVE image — never commit it
+runtime/
