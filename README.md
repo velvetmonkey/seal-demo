@@ -18,11 +18,13 @@ A public demo must not run a live frontier model (cost, abuse, nondeterminism, a
 
 The AI was always just the narrative wrapper. The kernel is the substance, and the substance is the AI-free part.
 
-## Demos
+## Demos (v1 — all three built, real verdicts)
 
-1. **The determinism differential** (scaffolded, `public/index.html`). Same attack, three gates — raw model, an ML guardrail, seal — fired ten times. The probabilistic gates flicker. seal returns the same verdict and the same proof hash every run. Kills "guardrails already do this" in one image.
-2. **Live policy swap** (planned). Edit the policy on stage, re-prove in seconds, watch the verdict flip. seal is a verified policy *compiler*, not one hand-proven wall.
-3. **The confident hallucination** (planned). The agent isn't evil, it's confidently wrong (a subtle ESG/regulatory miscalculation). seal OFF: the wrong number ships. seal ON: the kernel catches what a human reviewer would have waved through.
+1. **The determinism differential** (`public/demo1.html`). Same attack, three gates — raw model, an ML guardrail, seal — fired ten times. The probabilistic gates flicker. seal returns the same verdict and the same cert hash every run.
+2. **Live policy swap** (`public/demo2.html`). The same approved payment. Add a 2-of-3 quorum rule and the identical call flips ALLOW → DENY. Safety still allows it; consensus now vetoes. A verified policy *compiler*, not a hand-proven wall.
+3. **The confident hallucination** (`public/demo3.html`). The agent isn't evil, it's plausibly wrong: a non-convergent `assign` on a replicated store. Safety and temporal allow it; only the convergence kernel (grounded in `crdt-lean`) catches it.
+
+Every verdict on every page is **real**, captured from the verified `seal-host` (`fixtures/captured.json`). Reproduce via `build/capture*.py`.
 
 ## Delivery spectrum
 
@@ -39,4 +41,6 @@ This repo is **private pre-award**. The `seal-host` kernels carry an ARIA Track 
 
 ## Status
 
-Scaffold. The front-end shell runs today with a **stubbed evaluator** (`public/index.html`, see the seam marked `sealEvaluate`). The real verified PDP compiles from the private `seal-host` kernels to WASM and plugs in at that seam. See [`docs/BUILD.md`](docs/BUILD.md).
+**v1 complete.** Landing page + three demos, all driven by real captured kernel verdicts. Open `public/index.html` in a browser — no build step, no backend, no AI.
+
+**v1.1 (next): live WASM compute.** Today the verdicts are replayed from genuine recorded output (authentic "filmed not live"). The next step compiles the verified `decide` core from the private `seal-host` kernels to WASM (Lean → C → emscripten) and plugs it in at the `sealEvaluate` seam, so the kernel computes verdicts live in the browser. See [`docs/BUILD.md`](docs/BUILD.md).

@@ -1,0 +1,69 @@
+:root{
+  --bg:#0b0e14;--panel:#141a24;--line:#222c3a;--green:#36d399;--red:#f87272;
+  --amber:#fbbd23;--ink:#e6edf3;--mut:#8b98a8;--accent:#7aa2f7
+}
+*{box-sizing:border-box}
+body{margin:0;font:15px/1.5 ui-sans-serif,system-ui,-apple-system,sans-serif;background:var(--bg);color:var(--ink)}
+a{color:var(--accent);text-decoration:none}
+a:hover{text-decoration:underline}
+code{background:#0b0e14;border:1px solid var(--line);padding:1px 5px;border-radius:4px;font-family:ui-monospace,monospace;font-size:.92em}
+.nav{display:flex;gap:18px;align-items:center;padding:14px 22px;border-bottom:1px solid var(--line);font-size:13px}
+.nav .brand{font-weight:700}
+.nav .brand span{color:var(--mut);font-weight:400}
+.nav a{color:var(--mut)}
+.nav a.here{color:var(--ink)}
+.wrap{max-width:1040px;margin:0 auto;padding:30px 22px}
+h1{font-size:26px;margin:0 0 6px}
+h1 span{color:var(--mut);font-weight:400}
+h2{font-size:16px;margin:26px 0 10px}
+.lede{color:var(--mut);font-size:15px;max-width:760px}
+.sub{color:var(--mut);font-size:13px}
+.soundbite{border-left:3px solid var(--green);padding:10px 16px;margin:20px 0;color:var(--ink);font-size:16px;background:#0e131b}
+/* demo controls */
+.controls{display:flex;gap:10px;align-items:center;margin:18px 0;flex-wrap:wrap}
+select,button{font:inherit;background:var(--panel);color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:9px 12px}
+button{cursor:pointer}
+button.go{background:var(--green);color:#04130c;border:0;font-weight:700}
+button.toggle{border-color:var(--accent)}
+/* lanes (demo 1) */
+.lanes{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+.lane{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px;min-height:230px}
+.lane h3{margin:0 0 2px;font-size:14px}
+.lane .tag{color:var(--mut);font-size:12px;margin-bottom:12px}
+.runs{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:12px;min-height:22px}
+.dot{width:20px;height:20px;border-radius:5px;background:#26303f;display:grid;place-items:center;font-size:11px;font-weight:700}
+.dot.ok{background:rgba(54,211,153,.18);color:var(--green)}
+.dot.bad{background:rgba(248,114,114,.22);color:var(--red)}
+.score{font-size:13px;color:var(--mut)}
+.score b{color:var(--ink)}
+.proof{font-size:11px;color:var(--mut);margin-top:6px;font-family:ui-monospace,monospace;word-break:break-all}
+.blast{margin-top:10px;font-size:12px;color:var(--mut);border-top:1px dashed var(--line);padding-top:8px;min-height:30px}
+.blast.hit{color:var(--red)}
+/* cert table (demo 2 & 3) */
+.verdict-line{display:flex;align-items:center;gap:10px;margin:14px 0;font-size:15px}
+.pill{padding:3px 10px;border-radius:999px;font-weight:700;font-size:13px}
+.pill.allow{background:rgba(54,211,153,.18);color:var(--green)}
+.pill.deny{background:rgba(248,114,114,.2);color:var(--red)}
+.certs{width:100%;border-collapse:collapse;margin-top:8px;font-size:13px}
+.certs th{text-align:left;color:var(--mut);font-weight:500;border-bottom:1px solid var(--line);padding:7px 8px;font-size:12px;text-transform:uppercase;letter-spacing:.05em}
+.certs td{border-bottom:1px solid var(--line);padding:8px}
+.certs td.v-allow{color:var(--green)}
+.certs td.v-deny{color:var(--red)}
+.certs .hash{font-family:ui-monospace,monospace;color:var(--mut);font-size:12px}
+/* honesty / TCB panel */
+.guarantee{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:10px}
+.row{padding:10px;border-radius:8px;border:1px solid var(--line);background:#0e131b}
+.row .k{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--mut)}
+.row .v{font-size:13px;margin-top:4px}
+.row.proven{border-color:rgba(54,211,153,.4)}
+.row.tcb{border-color:rgba(251,189,35,.4)}
+.row.notclaimed{opacity:.6}
+/* cards (landing) */
+.cards{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:14px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px;display:block}
+.card:hover{border-color:var(--accent);text-decoration:none}
+.card .n{color:var(--mut);font-size:12px}
+.card h3{margin:4px 0 6px;font-size:15px;color:var(--ink)}
+.card p{margin:0;color:var(--mut);font-size:13px}
+footer{border-top:1px solid var(--line);color:var(--mut);font-size:12px;padding:18px 22px;margin-top:30px}
+@media(max-width:760px){.lanes,.guarantee,.cards{grid-template-columns:1fr}}

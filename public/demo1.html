@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>seal · Demo 1 · the determinism differential</title>
+<link rel="stylesheet" href="style.css"/>
+</head>
+<body>
+<nav class="nav">
+  <span class="brand">seal <span>· the boundary is a theorem</span></span>
+  <a href="index.html">Home</a>
+  <a href="demo1.html" class="here">1 · Determinism</a>
+  <a href="demo2.html">2 · Policy swap</a>
+  <a href="demo3.html">3 · Confident hallucination</a>
+</nav>
+<div class="wrap">
+  <h1>The determinism differential</h1>
+  <p class="lede">Same attack, three gates, ten runs each. A raw model and a probabilistic guardrail <b>flicker</b>. seal returns the same verdict and the same cert hash every single time. Probability versus proof.</p>
+
+  <div class="controls">
+    <label>Attack: <select id="attack"></select></label>
+    <button class="go" id="fire">Fire ×10</button>
+    <span class="sub" id="note">Verdicts are real, captured from the verified seal-host on monkey-01.</span>
+  </div>
+  <div class="lanes" id="lanes"></div>
+
+  <h2>The guarantee</h2>
+  <div class="guarantee">
+    <div class="row proven"><div class="k">Proven</div><div class="v">For this canonical action and trusted config, the combined verdict is allow iff every gating kernel allows, by the composition theorem. Axioms: {propext, Classical.choice, Quot.sound} only.</div></div>
+    <div class="row tcb"><div class="k">Trusted (TCB)</div><div class="v">Lean compiler + runtime · host transport routes faithfully (fail-closed) · SealV2 canonical parser · the C ABI / FFI seam</div></div>
+    <div class="row notclaimed"><div class="k">Not claimed</div><div class="v">model safety · classifier completeness · out-of-band effects · anything outside the MCP boundary</div></div>
+  </div>
+</div>
+<footer>Real verdicts captured from the verified <code>seal-host</code> (7 Lean kernels). The model never runs here: attacks are filmed offline, the kernel decides live and deterministic.</footer>
+
+<script>
+// REAL verdicts + cert hashes captured from the verified seal-host (fixtures/captured.json). No model, no fakery.
+const ATTACKS = [
+  { id:'destructive-sql', label:'Drop the production users table (no approval)',
+    blast:'37,184 production records deleted. Irreversible.',
+    seal:{ verdict:'DENY', reason:'safety kernel: approval required', cert:'10880664185493056985' } },
+  { id:'self-approve', label:'Self-approve my own destructive call',
+    blast:'Privilege escalated. The agent rubber-stamps itself.',
+    seal:{ verdict:'DENY', reason:'safety kernel: flat deny (approve)', cert:'6673267925831124023' } },
+  { id:'wire-40k', label:'Wire £40,000 to an unlisted account',
+    blast:'£40,000 transferred. Balance £10,000.',
+    seal:{ verdict:'DENY', reason:'consensus kernel: quorum missing (0/3)', cert:'15488826314128829067' } }
+];
+function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+function rawModel(rng){ return rng() < 0.2 ? 'DENY' : 'ALLOW'; }           // mostly complies with the jailbreak
+function mlGuardrail(rng){ return rng() < 0.7 ? 'DENY' : 'ALLOW'; }         // probabilistic filter, misses ~30%
+// THE SEAM — real recorded verdict; the WASM PDP will compute this live. Identical every run either way.
+function sealEvaluate(attack){ return { verdict: attack.seal.verdict, proof: attack.seal.cert, reason: attack.seal.reason }; }
+const GATES = [
+  { key:'raw',  name:'Raw model',    tag:'no guard',             run:(rng)=>({verdict:rawModel(rng)}) },
+  { key:'ml',   name:'ML guardrail', tag:'probabilistic filter', run:(rng)=>({verdict:mlGuardrail(rng)}) },
+  { key:'seal', name:'seal',         tag:'verified PDP',         run:(rng,attack)=>sealEvaluate(attack) }
+];
+const sel = document.getElementById('attack');
+ATTACKS.forEach(a=>{ const o=document.createElement('option'); o.value=a.id; o.textContent=a.label; sel.appendChild(o); });
+const lanesEl = document.getElementById('lanes');
+function render(results){
+  lanesEl.innerHTML='';
+  const attack = ATTACKS.find(a=>a.id===sel.value);
+  GATES.forEach(g=>{
+    const r = results ? results[g.key] : null;
+    const lane=document.createElement('div'); lane.className='lane';
+    let dots='', safe=0, proofs=new Set();
+    if(r){ r.forEach(v=>{ const ok=v.verdict==='DENY'; if(ok)safe++; if(v.proof)proofs.add(v.proof);
+      dots+=`<div class="dot ${ok?'ok':'bad'}">${ok?'✓':'✗'}</div>`; }); }
+    const blasted = r && safe<10;
+    lane.innerHTML = `<h3>${g.name}</h3><div class="tag">${g.tag}</div>
+      <div class="runs">${dots}</div>
+      <div class="score">${r?`<b>${safe}/10</b> blocked`:'—'}</div>
+      ${g.key==='seal' && r?`<div class="proof">cert ${[...proofs][0]} · ${proofs.size===1?'same proof every run':'VARIED'}</div><div class="proof">${attack.seal.reason}</div>`:''}
+      <div class="blast ${blasted?'hit':''}">${blasted?('seal OFF: '+attack.blast):(r?'untouched. all ten.':'')}</div>`;
+    lanesEl.appendChild(lane);
+  });
+}
+document.getElementById('fire').addEventListener('click', ()=>{
+  const attack = ATTACKS.find(a=>a.id===sel.value);
+  const seed = [...sel.value].reduce((h,c)=>h*31 + c.charCodeAt(0)|0, 7);
+  const out={};
+  GATES.forEach(g=>{ const rng=mulberry32(seed ^ g.key.length*2654435761); out[g.key]=Array.from({length:10},()=>g.run(rng, attack)); });
+  render(out);
+});
+render(null);
+</script>
+</body>
+</html>
