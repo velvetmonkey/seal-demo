@@ -13,6 +13,22 @@ code{background:#0b0e14;border:1px solid var(--line);padding:1px 5px;border-radi
 .nav a{color:var(--mut)}
 .nav a.here{color:var(--ink)}
 .wrap{max-width:95%;margin:0 auto;padding:30px 22px}
+
+/* ── full-screen app shell (one stage, no page scroll) ── */
+html,body{height:100%}
+body.app{height:100vh;overflow:hidden;display:flex;flex-direction:column}
+.topbar{flex:0 0 auto;display:flex;align-items:baseline;gap:20px;padding:12px 24px;border-bottom:1px solid var(--line);flex-wrap:wrap}
+.topbar .brand{font-weight:700;font-size:15px;white-space:nowrap}
+.topbar .brand span{color:var(--mut);font-weight:400}
+.topbar .thesis{color:var(--mut);font-size:13px}
+.topbar .thesis b{color:var(--ink);font-weight:600}
+.demo{flex:1 1 auto;min-height:0;display:grid;grid-template-columns:300px 1fr;gap:24px;padding:18px 24px}
+.rail{display:flex;flex-direction:column;gap:14px;min-height:0;overflow-y:auto}
+.rail-note{font-size:12.5px;color:var(--mut);background:#0a0f17;border:1px solid var(--line);border-radius:10px;padding:12px 14px;line-height:1.5}
+.rail-note code{color:var(--ink)}
+.proofbar{flex:0 0 auto;display:grid;grid-template-columns:repeat(3,1fr);gap:20px;padding:10px 24px;border-top:1px solid var(--line);font-size:11.5px;color:var(--mut);line-height:1.45}
+.proofbar b{font-weight:700;color:var(--ink)}
+.ink-amber{color:var(--amber)}
 h1{font-size:26px;margin:0 0 6px}
 h1 span{color:var(--mut);font-weight:400}
 h2{font-size:16px;margin:26px 0 10px}
@@ -73,9 +89,15 @@ footer{border-top:1px solid var(--line);color:var(--mut);font-size:12px;padding:
 .boot-error code{background:#0b0e14;color:var(--ink)}
 .ink-allow{color:var(--green);font-weight:700}
 .ink-deny{color:var(--red);font-weight:700}
-.stage{margin:30px 0 10px;padding:22px;background:#0d121b;border:1px solid var(--line);border-radius:16px}
-.stage h2{font-size:19px;margin:0 0 6px}
-.stage-note{margin-top:14px}
+/* the right-hand stage column (call + animated track + verdict + replay) */
+.stage{min-width:0;min-height:0;display:flex;flex-direction:column;gap:10px}
+.stage>*{flex:0 0 auto}
+.stage>.call-banner{margin:0}
+/* the track is the one flexible element: it fills the leftover height, centres the gates, and
+   scrolls inside its own box if a short viewport can't show them — the page never scrolls. */
+.stage>.track-frame{flex:1 1 0;min-height:0;overflow:auto;display:flex;align-items:center}
+.stage>.verdict-out{margin-top:0}
+.stage>.run-row{margin-top:0}
 
 /* scenario picker */
 .picker{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px}
@@ -86,23 +108,23 @@ footer{border-top:1px solid var(--line);color:var(--mut);font-size:12px;padding:
 .pick.on{background:#12233f;border-color:var(--accent);color:var(--ink);font-weight:600}
 
 /* the call banner */
-.call-banner{font-size:17px;margin:6px 0 18px;padding:14px 18px;background:#0b0e14;border:1px solid var(--line);border-left:3px solid var(--accent);border-radius:10px}
-.call-banner code{font-size:16px;background:transparent;border:0;padding:0;color:var(--ink)}
+.call-banner{font-size:15px;margin:0;padding:10px 14px;background:#0b0e14;border:1px solid var(--line);border-left:3px solid var(--accent);border-radius:10px}
+.call-banner code{font-size:15px;background:transparent;border:0;padding:0;color:var(--ink)}
 .cb-label{color:var(--mut);font-size:13px;margin-right:8px}
 
 /* the track */
 .track-frame{overflow-x:auto;overflow-y:hidden;padding:6px 0 4px}
-.track{position:relative;display:flex;align-items:flex-start;gap:30px;min-height:300px;padding:18px 8px 18px 120px}
+.track{position:relative;display:flex;align-items:flex-start;gap:26px;padding:14px 8px 14px 110px}
 
 /* a gate — compact card; every line is tied to the call being judged */
-.gate{position:relative;flex:0 0 auto;width:200px;display:flex;flex-direction:column;align-items:center;
+.gate{position:relative;flex:0 0 auto;width:188px;display:flex;flex-direction:column;align-items:center;
   transition:opacity .3s,filter .3s}
 .gate.unreached{opacity:.22;filter:grayscale(1)}
-.g-name{font-size:17px;font-weight:700;margin-bottom:8px;text-align:center}
+.g-name{font-size:16px;font-weight:700;margin-bottom:6px;text-align:center}
 /* one register: `checks` (what this gate inspects on the call) + `rule` (what it enforces) */
-.g-line{width:100%;display:flex;gap:7px;font-size:12px;line-height:1.34;color:#9fb0c8;margin-bottom:6px;min-height:30px}
+.g-line{width:100%;display:flex;gap:7px;font-size:12px;line-height:1.32;color:#9fb0c8;margin-bottom:5px;min-height:26px}
 .g-line .g-k{flex:0 0 auto;font-size:9px;letter-spacing:.12em;font-weight:800;text-transform:uppercase;color:var(--accent);opacity:.8;padding-top:3px;width:38px}
-.gate-arch{position:relative;width:150px;height:118px;border-radius:12px;overflow:hidden;
+.gate-arch{position:relative;width:138px;height:100px;border-radius:12px;overflow:hidden;
   border:2px solid var(--line);background:#070a0f}
 .door{position:absolute;top:0;bottom:0;width:50%;background:linear-gradient(180deg,#232c3a,#161d28);
   transition:transform .45s ease, background .25s;z-index:2}
@@ -128,7 +150,7 @@ footer{border-top:1px solid var(--line);color:var(--mut);font-size:12px;padding:
 .gate.deny .gate-stamp{opacity:1;transform:scale(1) rotate(-12deg);color:#ffd7d7;
   text-shadow:0 0 14px rgba(248,114,114,.9)}
 /* the plain outcome, filled when the gate stamps */
-.g-result{margin-top:12px;font-size:13px;color:var(--mut);text-align:center;min-height:36px;line-height:1.35;padding:0 4px;font-weight:600}
+.g-result{margin-top:8px;font-size:13px;color:var(--mut);text-align:center;min-height:28px;line-height:1.3;padding:0 4px;font-weight:600}
 .gate.allow .g-result{color:#bfeede}
 .gate.deny .g-result{color:#ffc0c0}
 .gate-hash{font-family:ui-monospace,monospace;font-size:10px;color:#52607a;word-break:break-all;text-align:center;min-height:14px}
@@ -171,14 +193,14 @@ footer{border-top:1px solid var(--line);color:var(--mut);font-size:12px;padding:
 @keyframes latch{0%{transform:scale(1.8) rotate(-20deg);opacity:0}100%{transform:none;opacity:1}}
 
 /* verdict output */
-.verdict-out{margin-top:20px;min-height:8px}
-.big-verdict{font-size:32px;font-weight:900;letter-spacing:.04em}
+.verdict-out{min-height:8px;display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 14px}
+.big-verdict{font-size:24px;font-weight:900;letter-spacing:.04em}
 .big-verdict.deny{color:var(--red);text-shadow:0 0 22px rgba(248,114,114,.5)}
 .big-verdict.allow{color:var(--green);text-shadow:0 0 22px rgba(54,211,153,.4)}
 .verdict-out.killed{animation:flashred .5s ease}
 @keyframes flashred{0%{background:rgba(248,114,114,.14)}100%{background:transparent}}
-.verdict-consequence{font-size:20px;margin-top:8px;color:var(--ink);font-weight:600;line-height:1.35}
-.verdict-meta{font-size:13px;margin-top:8px;color:var(--mut)}
+.verdict-consequence{font-size:17px;margin-top:6px;color:var(--ink);font-weight:600;line-height:1.3}
+.verdict-meta{flex-basis:100%;font-size:13px;margin-top:2px;color:var(--mut)}
 .verdict-meta b{color:var(--ink)}
 .verdict-meta .vr-hash{font-family:ui-monospace,monospace;font-size:12px;color:#52607a}
 .verdict-why{font-size:18px;margin-top:4px;color:var(--ink)}

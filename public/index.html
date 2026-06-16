@@ -5,141 +5,59 @@
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
 <title>seal · the boundary is a theorem</title>
 <!-- bump ?v= on every push so browsers fetch fresh assets without a hard refresh -->
-<link rel="stylesheet" href="style.css?v=20260616j"/>
+<link rel="stylesheet" href="style.css?v=20260616k"/>
 </head>
-<body>
-<nav class="nav">
+<body class="app">
+
+<header class="topbar">
   <span class="brand">seal <span>· the boundary is a theorem</span></span>
-  <a href="#fire">Fire your own call</a>
-  <a href="#tcb">What's proven</a>
-</nav>
+  <span class="thesis">A jailbroken agent's call is judged by gates <b>proven in Lean&nbsp;4</b>. Change the policy — watch the boundary decide.</span>
+</header>
 
-<div class="wrap">
-  <div id="boot-error" class="boot-error" style="display:none"></div>
+<main class="demo">
+  <aside class="rail" id="rail"></aside>
 
-  <header class="intro">
-    <h1>The boundary is a theorem.</h1>
-    <p class="lede">A jailbroken agent's tool call is intercepted and judged by a series of gates, each <b>proven correct in Lean&nbsp;4</b>. seal doesn't trust the model — it proves whether <b>this exact call</b> may cross. Clear every gate and the call leaves as a sealed certificate; trip one and it's destroyed.</p>
-  </header>
-
-  <!-- ─────────── THE BOUNDARY CHECK ─────────── -->
   <section class="stage">
+    <div id="boot-error" class="boot-error" style="display:none"></div>
     <div class="call-banner" id="call-banner"></div>
-    <div class="picker" id="picker"></div>
 
     <div class="track-frame"><div class="track" id="track"></div></div>
     <div class="equation" id="equation"></div>
 
-    <div class="run-row">
-      <button class="run-btn" id="run">▶ Run the boundary check</button>
-      <button class="again-btn" id="run-again" disabled>↻ Run again</button>
-      <span class="det" id="det"></span>
-    </div>
-
     <div class="verdict-out" id="verdict-out"></div>
 
-    <div class="replay" id="replay" hidden>
-      <div class="rp-intro">The agent can wrap the same call in any excuse — the boundary only sees the call.</div>
-      <button class="again-btn" id="replay-btn">↻ Replay — change the agent's story</button>
-      <div class="rp-out" id="replay-out"></div>
+    <div class="run-row">
+      <button class="run-btn" id="run">▶ Run</button>
+      <button class="again-btn" id="replay-btn">↻ Replay</button>
+      <span class="det" id="det"></span>
     </div>
+    <div class="rp-out" id="replay-out"></div>
   </section>
+</main>
 
-  <!-- ─────────── CHANGE THE RULE ─────────── -->
-  <section class="stage">
-    <h2>Change the rule, watch the verdict move</h2>
-    <p class="sub">Flip a policy knob — every change is a <b>real edit</b> to the trusted config the kernel reads (shown in the diff), not a UI trick.</p>
-    <div class="lab">
-      <div class="lab-rail" id="lab-rail"></div>
-      <div class="lab-stage">
-        <div class="call-banner" id="lab-banner"></div>
-        <div class="track-frame"><div class="track lab-track" id="lab-track"></div></div>
-        <div class="lab-causal" id="lab-causal"></div>
-        <div class="lab-diff" id="lab-diff"></div>
-      </div>
-    </div>
-  </section>
-
-  <!-- ─────────── FIRE YOUR OWN CALL ─────────── -->
-  <section class="stage" id="fire">
-    <h2>Fire your own call</h2>
-    <p class="sub">Any tool, any payload — judged by the real kernel. The gate map shows which kernels judge it and what trips each. No approval is supplied by default, so guarded tools fail closed.</p>
-    <div class="fire">
-      <div class="fire-row">
-        <label class="fire-tool">tool
-          <select id="fire-tool">
-            <option>db.execute</option><option>payments.send</option><option>store.update</option>
-            <option>session.revoke</option><option>key.use</option><option>approve</option>
-          </select>
-        </label>
-        <div class="fire-approval">
-          <span class="lc-label">Human approval</span>
-          <div class="seg" id="fire-approval-seg">
-            <button class="seg-btn" data-v="1">Attached</button>
-            <button class="seg-btn on" data-v="0">Missing</button>
-          </div>
-        </div>
-      </div>
-      <div class="fire-row">
-        <input id="fire-args" style="flex:1;min-width:240px;font:inherit;background:var(--panel);color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:9px 12px;font-family:ui-monospace,monospace"
-               value='{"database":"prod","sql":"drop table users"}'/>
-        <button class="go" id="fire-go">Decide</button>
-      </div>
-      <div class="fire-presets">
-        <span class="fp-label">try</span>
-        <button class="pick" id="fire-pass">▶ a call that passes</button>
-        <button class="pick" id="fire-trip">✦ a call that trips</button>
-      </div>
-    </div>
-    <div class="gatemap" id="fire-gatemap"></div>
-    <div id="fire-result"></div>
-  </section>
-
-  <!-- ─────────── WHAT'S PROVEN ─────────── -->
-  <section class="stage tcb" id="tcb">
-    <h2>What's proven, trusted, and not claimed</h2>
-    <div class="guarantee">
-      <div class="row proven"><div class="k">Proven</div><div class="v">For a canonical action and trusted config, the combined verdict is ALLOW iff every gating kernel allows — by the composition theorem. Axioms: {propext, Classical.choice, Quot.sound} only.</div></div>
-      <div class="row tcb"><div class="k">Trusted (TCB)</div><div class="v">Lean compiler + runtime · the host transport routes faithfully (fail-closed) · the SealV2 canonical parser · the C ABI / FFI seam.</div></div>
-      <div class="row notclaimed"><div class="k">Not claimed</div><div class="v">model safety · classifier completeness · out-of-band effects · anything outside the MCP boundary.</div></div>
-    </div>
-    <p class="sub" style="margin-top:14px">Seven Lean&nbsp;4 kernels gate the boundary: safety, temporal, consensus, convergence, calibration, linear, budget. A call only activates the gates its config invokes — those are the gates on the track. The verdict is computed live: the native <code>seal-host</code> binary (<code>POST /api/decide</code>, Docker) or the same kernel compiled to in-browser WebAssembly — conformance-gated to be identical. The model never runs; you supply the call, the proven decision procedure judges it.</p>
-  </section>
-</div>
-
-<footer>
-  Real verdicts from the verified <code>seal-host</code> (7 Lean&nbsp;4 kernels). Spec layer is open; proof sources are held under the pre-award publication boundary. A demonstration, not the source.
+<footer class="proofbar">
+  <span><b class="ink-allow">Proven</b> — ALLOW iff every gate allows (composition theorem); each gate correct in Lean&nbsp;4; re-runs give an identical cert.</span>
+  <span><b class="ink-amber">Trusted</b> — Lean compiler + runtime · host transport (fail-closed) · canonical parser · the FFI seam.</span>
+  <span><b>Not claimed</b> — model safety · anything outside the boundary. Verdicts are real (WASM / native <code>seal-host</code>); the model never runs.</span>
 </footer>
 
 <script>
-// Boot guard (classic script). If gauntlet.js (an ES module) fails to load — usually because
-// the page was opened as file://, which blocks module imports + the WASM fetch — no handlers
-// attach and the page looks inert. Detect that and say exactly how to fix it.
+// Boot guard (classic script). If gauntlet.js (an ES module) fails to load — usually file://, which
+// blocks module imports + the WASM fetch — no handlers attach and the stage looks inert. Detect it.
 (function () {
   var lastErr = "";
-  window.addEventListener("error", function (e) {
-    if (e && (e.filename || "").indexOf("gauntlet") > -1 || (e && e.message)) lastErr = (e && e.message) || lastErr;
-  });
+  window.addEventListener("error", function (e) { if (e && (e.filename || "").indexOf("gauntlet") > -1 || (e && e.message)) lastErr = (e && e.message) || lastErr; });
   function banner(msg) {
-    var el = document.getElementById("boot-error");
-    if (!el) return;
+    var el = document.getElementById("boot-error"); if (!el) return;
     el.style.display = "block";
-    el.innerHTML =
-      "<b>seal could not start.</b> " + msg +
-      "<br>Serve it over HTTP rather than opening the file directly: " +
-      "<code>cd public &amp;&amp; python3 -m http.server</code>, then open " +
-      "<code>http://localhost:8000</code>. Opening it as <code>file://</code> blocks the kernel module.";
+    el.innerHTML = "<b>seal could not start.</b> " + msg + "<br>Serve over HTTP: <code>cd public &amp;&amp; python3 -m http.server</code>, then open <code>http://localhost:8000</code>. Opening it as <code>file://</code> blocks the kernel module.";
   }
   window.addEventListener("load", function () {
-    setTimeout(function () {
-      if (!window.__gauntletReady) {
-        banner(location.protocol === "file:" ? "It was opened as a local file (file://)." : "The page script did not initialise." + (lastErr ? " (" + lastErr + ")" : ""));
-      }
-    }, 2500);
+    setTimeout(function () { if (!window.__gauntletReady) banner(location.protocol === "file:" ? "It was opened as a local file (file://)." : "The page script did not initialise." + (lastErr ? " (" + lastErr + ")" : "")); }, 2500);
   });
 })();
 </script>
 <script src="wasm/seal.js"></script>
-<script type="module" src="gauntlet.js?v=20260616j"></script>
+<script type="module" src="gauntlet.js?v=20260616k"></script>
 </body>
 </html>
