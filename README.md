@@ -5,6 +5,30 @@ A public-facing, browser-runnable demo of **seal** — a verified **Policy Decis
 > Everyone else makes the model safer. seal makes the model irrelevant to safety.
 > The boundary is a theorem, and theorems don't get jailbroken.
 
+## Quick start
+
+**Prerequisites:** a modern web browser and any static file server. There is nothing to compile or install — `public/` *is* the demo, and the verified kernel ships pre-compiled as WebAssembly (`public/wasm/seal.wasm`).
+
+> ⚠️ **Do not double-click `index.html`.** Browsers refuse to fetch WebAssembly over `file://`, so the page loads but every button does nothing. It **must** be served over HTTP.
+
+```sh
+git clone https://github.com/velvetmonkey/seal-demo.git
+cd seal-demo/public
+python3 -m http.server 8080        # serve over HTTP (NOT file://)
+```
+
+Then open **http://localhost:8080** and click **▶ Send the call**.
+
+No Python? Any static server works — from inside `public/`:
+
+```sh
+npx serve            # Node (npx serve -l 8080)
+# or: php -S localhost:8080
+# or: VS Code → "Live Server" extension → Go Live
+```
+
+That's the whole thing: every verdict is the real verified kernel deciding live in your browser, no backend required. For the native-binary target (Docker) and other run modes, see [Run it](#run-it) below.
+
 ## The honest claim
 
 seal proves the **decision**, not the whole stack. The kernel guarantees: *for this canonical request and this policy, the verdict is DENY, by theorem X.* It does **not** claim the proxy, auth, sandbox, or parser are unbypassable. The demo shows the real guarantee with the Trusted Computing Base named on screen. Honesty is the pitch, not a footnote.
