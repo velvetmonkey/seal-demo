@@ -35,10 +35,13 @@ export function gatePolicy(kernel, config, tool) {
         return `needs a human approval when ${r.match.arg} contains “${(r.match.needles || []).join(" / ")}”`;
       return `${tool} is guarded — needs a valid human approval`;
     }
-    case "temporal":
-      return (config.temporal && (config.temporal.policies || []).length)
-        ? "the event trace must satisfy the temporal policy"
-        : "the event trace must contain no forbidden sequence";
+    case "temporal": {
+      const ps = (config.temporal && config.temporal.policies) || [];
+      if (!ps.length) return "the event trace must contain no forbidden sequence";
+      const p = ps[0];
+      if (p.type === "no_after") return `no ${(p.forbidden || []).join(" / ")} after a ${(p.trigger || []).join(" / ")}`;
+      return "the event trace must satisfy the temporal policy";
+    }
     case "consensus": {
       const c = config.consensus || {};
       const hs = c.high_stakes || [];

@@ -43,5 +43,18 @@ export async function decideConfig(config, { tool, args = {}, approvals = [], vo
   return decideWith(config, buildStepInput({ tool, args, approvals, votes }), tool);
 }
 
+// Decide an ORDERED sequence of calls in ONE session: seal_init once, then a seal_decide per step,
+// so the kernel accumulates a REAL event trace across the steps (the stateful kernels — temporal,
+// budget, linear — only fire on a sequence). Returns the verdict of the LAST step. Used to break
+// the Temporal gate (a destructive db.execute after a session.revoke). `steps` = [{tool,args,approvals}].
+export async function decideSeq(config, steps, tool) {
+  const M = await mod();
+  const ir = JSON.parse(M.ccall("seal_init", "string", ["string", "string"], [buildEnvelope(config), PUBKEY]));
+  if (ir.ok !== true) throw new Error("seal_init failed: " + (ir.error || JSON.stringify(ir)));
+  let raw;
+  steps.forEach((s, i) => { raw = M.ccall("seal_decide", "string", ["string"], [buildStepInput({ ...s, id: i + 1 })]); });
+  return parseVerdict(raw, tool);
+}
+
 // Warm the module (so first real decision is instant) and report readiness.
 export async function ready() { await mod(); return true; }

@@ -48,6 +48,13 @@ const CFG_PAY_B = { ...CFG_PAY_A, consensus: CONSENSUS };
 // Demo 3 — confident hallucination: store.update safety-gated + convergence kernel.
 const CFG_STORE = { epoch: 1, safety: safety([G("store.update", [{ literal: "store" }])]),
   temporal: { policies: [] }, convergence: { tools: [{ tool: "store.update", op_arg: "op" }] } };
+// Temporal — out-of-order / stale-capability: a destructive db.execute AFTER a session.revoke is
+// forbidden by a real temporal policy. Needs an ordered trace (revoke then the call), so it is
+// decided as a sequence (seal_init once, a seal_decide per step) — see decideSeq.
+export const CFG_TEMPORAL = { epoch: 1,
+  safety: safety([DB, G("session.revoke", [{ literal: "revoke" }])]),
+  temporal: { policies: [{ name: "no-destructive-after-revoke", type: "no_after",
+    trigger: ["session.revoke"], forbidden: ["db.execute"] }] } };
 // "Fire your own" box: a rich multi-kernel config covering the common tools.
 export const CFG_STANDARD = { epoch: 1,
   safety: safety([DB, G("payments.send", [{ literal: "pay" }]), G("session.revoke", [{ literal: "revoke" }]),
@@ -69,14 +76,14 @@ export const SCENARIOS = {
   "store-subtle":    { config: CFG_STORE, tool: "store.update", args: { op: "assign", key: "k1" }, approvals: [STORE_T], demo: 3, label: "store.update { op: assign }" },
 };
 
-const rpc = (tool, args) => JSON.stringify({ jsonrpc: "2.0", id: 1, method: "tools/call", params: { name: tool, arguments: args } });
+const rpc = (tool, args, id = 1) => JSON.stringify({ jsonrpc: "2.0", id, method: "tools/call", params: { name: tool, arguments: args } });
 
 // Build the seal_host_step input JSON for a scenario (or a custom tool call).
 // `votes` is the raw consensus votes-file text (NDJSON lines
 // `{"acceptor":<nat>,"value":"<tool>"}`); default "" is byte-identical to before, so
 // existing scenarios/conformance are unaffected.
-export function buildStepInput({ tool, args, approvals = [], now = 1000, votes = "" }) {
-  return stringifyBig({ line: rpc(tool, args), now,
+export function buildStepInput({ tool, args, approvals = [], now = 1000, votes = "", id = 1 }) {
+  return stringifyBig({ line: rpc(tool, args, id), now,
     approvals: approvals.map((t) => ({ target: t })), votes, grants: "", forecasts: "" });
 }
 

@@ -3,8 +3,8 @@
 // kernel decides it (decideConfig); the verdict is shown by a token animating through the gating
 // kernels in series. Every gate card is tied to the call (checks / rule / → result / cert), and
 // every verdict + cert hash is REAL from the kernel — never faked. No kernel source here.
-import { decideConfig, ready } from "./seal-wasm.js";
-import { SCENARIOS, stableHash } from "./seal-config.js";
+import { decideConfig, decideSeq, ready } from "./seal-wasm.js";
+import { SCENARIOS, CFG_TEMPORAL, stableHash } from "./seal-config.js";
 import { kname, gatePolicy, gateChecks, gateResult } from "./gates.js";
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -56,7 +56,7 @@ function certVector(res) { return JSON.stringify((res.certs || []).map((c) => c.
   const runBtn = document.getElementById("run");
   if (!rail) return;
 
-  const state = { call: "pay", approval: true, quorum: true, signoffs: 0, op: "assign" };
+  const state = { call: "pay", approval: true, quorum: true, signoffs: 0, op: "assign", revoked: true };
   const votesText = (n, value) => { let s = ""; for (let i = 1; i <= n; i++) s += JSON.stringify({ acceptor: i, value }) + "\n"; return s; };
 
   // compose the REAL {config, tool, args, approvals, votes} + consequence copy from the knobs
@@ -73,6 +73,15 @@ function certVector(res) { return JSON.stringify((res.certs || []).map((c) => c.
                approvals: state.approval ? [stableHash(["db.execute", "db", "prod", "write", sql])] : [], votes: "",
                stopped: "The production users table is still there.", won: "The destructive query ran — sealed, because a human approved it." };
     }
+    if (state.call === "temporal") {
+      const dbA = stableHash(["db.execute", "db", "prod", "write", "drop table users"]);
+      const revokeA = stableHash(["session.revoke", "revoke"]);
+      const dbStep = { tool: "db.execute", args: { database: "prod", sql: "drop table users" }, approvals: [dbA] };
+      const seq = state.revoked ? [{ tool: "session.revoke", args: {}, approvals: [revokeA] }, dbStep] : [dbStep];
+      return { config: CFG_TEMPORAL, tool: "db.execute", args: dbStep.args, seq,
+               stopped: "The destructive query was blocked — it reused a session after it was revoked.",
+               won: "The query ran — sealed (the trace is clean)." };
+    }
     if (state.call === "store") {
       return { config: STORE_BASE, tool: "store.update", args: { op: state.op, key: "k1" },
                approvals: state.approval ? STORE_APPROVALS : [], votes: "",
@@ -82,9 +91,15 @@ function certVector(res) { return JSON.stringify((res.certs || []).map((c) => c.
              stopped: "The agent could not rubber-stamp itself.", won: "Approved — sealed." };
   }
 
-  const callString = (c) => `${c.tool} ${JSON.stringify(c.args).replace(/"([^"]+)":/g, "$1: ")}`;
-  const sig = (c) => JSON.stringify({ t: c.tool, a: c.args, ap: c.approvals.map(String), v: c.votes, hs: c.config.consensus ? c.config.consensus.high_stakes : null });
-  const decideComposed = (c) => decideConfig(c.config, { tool: c.tool, args: c.args, approvals: c.approvals, votes: c.votes });
+  const argStr = (a) => JSON.stringify(a).replace(/"([^"]+)":/g, "$1: ");
+  const callString = (c) => c.seq && c.seq.length > 1
+    ? c.seq.map((s) => `${s.tool}${Object.keys(s.args).length ? " " + argStr(s.args) : ""}`).join("  →  ")
+    : `${c.tool} ${argStr(c.args)}`;
+  const sig = (c) => JSON.stringify({ t: c.tool, a: c.args, seq: c.seq ? c.seq.map((s) => [s.tool, s.args, (s.approvals || []).map(String)]) : null,
+    ap: (c.approvals || []).map(String), v: c.votes || "", hs: c.config.consensus ? c.config.consensus.high_stakes : null });
+  const decideComposed = (c) => c.seq
+    ? decideSeq(c.config, c.seq, c.tool)
+    : decideConfig(c.config, { tool: c.tool, args: c.args, approvals: c.approvals, votes: c.votes });
 
   let prevCerts = null, prevSig = null, lockVector = null, runCount = 0, runToken = 0;
 
@@ -167,12 +182,20 @@ function certVector(res) { return JSON.stringify((res.certs || []).map((c) => c.
 
   function renderRail() {
     rail.innerHTML = "";
-    rail.appendChild(seg("The call", "", [{ val: "pay", text: "Pay £40k" }, { val: "db", text: "Database" }, { val: "store", text: "Store write" }, { val: "self", text: "Self-approve" }],
+    rail.appendChild(seg("The call", "", [{ val: "pay", text: "Pay £40k" }, { val: "db", text: "Database" }, { val: "store", text: "Store write" }, { val: "temporal", text: "Out-of-order" }, { val: "self", text: "Self-approve" }],
       state.call, (v) => { state.call = v; renderRail(); onCall(); }));
     if (state.call === "self") {
       const note = document.createElement("div"); note.className = "rail-note";
       note.innerHTML = `<code>approve</code> is flat-denied — no policy can let an agent rubber-stamp its own action.`;
       rail.appendChild(note); return;
+    }
+    if (state.call === "temporal") {
+      const note = document.createElement("div"); note.className = "rail-note";
+      note.innerHTML = `The agent revokes its session, then reuses it for a destructive query. Both calls are approved — but the <b>Temporal</b> gate reads the ordered trace and catches the stale-capability replay.`;
+      rail.appendChild(note);
+      rail.appendChild(seg("Session revoked first", "→ Temporal", [{ val: false, text: "No" }, { val: true, text: "Yes" }],
+        state.revoked, (v) => { state.revoked = v; renderRail(); onKnob(); }));
+      return;
     }
     rail.appendChild(seg("Human approval", "→ Safety", [{ val: true, text: "Attached" }, { val: false, text: "Missing" }],
       state.approval, (v) => { state.approval = v; renderRail(); onKnob(); }));
