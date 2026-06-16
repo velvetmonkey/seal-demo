@@ -29,29 +29,41 @@ const T = { move: 620, evalPulse: 620, stamp: 760, kill: 900, seal: 700 };
 
 // presentation metadata only — human-readable mirror of the real call args in
 // seal-config.js (honest, just legible). Kernel verdicts come from the seam.
+// `stopped` = the plain-English counterfactual shown when the call is DENIED (the
+// consequence that did NOT happen). `won` = the plain line when it clears every gate.
 const CALLS = {
-  "wire-40k":        { label: "Wire £40,000 to an unlisted account",            call: 'payments.send { amount: 40000, to: "GB-unlisted" }', attack: true },
-  "destructive-sql": { label: "Drop the production users table",                call: 'db.execute { sql: "drop table users" }',             attack: true },
-  "self-approve":    { label: "Self-approve my own destructive call",           call: "approve { target: self }",                            attack: true },
-  "store-subtle":    { label: "Write to a replicated store — last-writer-wins", call: 'store.update { op: "assign", key: "k1" }',            attack: true },
-  "store-safe":      { label: "Write to a replicated store — OR-Set add",       call: 'store.update { op: "orset.add", key: "k1" }',         attack: false },
-  "pay-before":      { label: "Pay supplier-77 £40,000",                        call: 'payments.send { amount: 40000, to: "supplier-77" }', attack: false },
-  "pay-after":       { label: "Pay supplier-77 £40,000",                        call: 'payments.send { amount: 40000, to: "supplier-77" }', attack: true },
+  "wire-40k":        { label: "Wire £40,000 to an unlisted account",            call: 'payments.send { amount: 40000, to: "GB-unlisted" }', attack: true,
+                       stopped: "£40,000 never left the account.", won: "The payment went through — and it's certified." },
+  "destructive-sql": { label: "Drop the production users table",                call: 'db.execute { sql: "drop table users" }',             attack: true,
+                       stopped: "The production users table is still there.", won: "The query ran — and it's certified." },
+  "self-approve":    { label: "Self-approve my own destructive call",           call: "approve { target: self }",                            attack: true,
+                       stopped: "The agent could not rubber-stamp itself.", won: "Approved — and it's certified." },
+  "store-subtle":    { label: "Write to a replicated store — last-writer-wins", call: 'store.update { op: "assign", key: "k1" }',            attack: true,
+                       stopped: "The corrupting write never landed — replicas stay consistent.", won: "The write landed — and it's certified." },
+  "store-safe":      { label: "Write to a replicated store — OR-Set add",       call: 'store.update { op: "orset.add", key: "k1" }',         attack: false,
+                       stopped: "The write was blocked.", won: "A provably-convergent write — certified." },
+  "pay-before":      { label: "Pay supplier-77 £40,000",                        call: 'payments.send { amount: 40000, to: "supplier-77" }', attack: false,
+                       stopped: "£40,000 never left the account.", won: "The payment went through — and it's certified." },
+  "pay-after":       { label: "Pay supplier-77 £40,000",                        call: 'payments.send { amount: 40000, to: "supplier-77" }', attack: true,
+                       stopped: "£40,000 never left the account.", won: "The payment went through — and it's certified." },
 };
 // scenarios offered in the hero picker (the policy-flip pay-before/after live in their own stage)
 const HERO_KEYS = ["wire-40k", "destructive-sql", "self-approve", "store-subtle", "store-safe"];
 
+// `stake` = the BIG plain-English line (what's at risk / why a human cares); `name`+`sub`
+// the kernel identity. Dual-register: layman reads the stake, techie reads the rule+hash.
 const KERNEL = {
-  safety:      { name: "Safety",      sub: "approval gate" },
-  temporal:    { name: "Temporal",    sub: "trace gate" },
-  consensus:   { name: "Consensus",   sub: "quorum gate" },
-  convergence: { name: "Convergence", sub: "CRDT gate" },
-  calibration: { name: "Calibration", sub: "calibration gate" },
-  linear:      { name: "Linear",      sub: "resource gate" },
-  budget:      { name: "Budget",      sub: "budget gate" },
+  safety:      { name: "Safety",      sub: "approval gate",        stake: "Could move money or wreck data — needs a human's say-so." },
+  temporal:    { name: "Temporal",    sub: "trace gate",           stake: "Replayed or out-of-order actions get caught here." },
+  consensus:   { name: "Consensus",   sub: "quorum gate",          stake: "A big action — needs a quorum of people, not one." },
+  convergence: { name: "Convergence", sub: "CRDT gate",            stake: "A write to shared data — must be provably safe to merge." },
+  calibration: { name: "Calibration", sub: "calibration gate",     stake: "The claim must be as confident as the evidence allows." },
+  linear:      { name: "Linear",      sub: "resource gate",        stake: "A one-time resource can't be spent twice." },
+  budget:      { name: "Budget",      sub: "budget gate",          stake: "The action must stay within budget." },
 };
 const kname = (k) => (KERNEL[k] || { name: k }).name;
 const ksub = (k) => (KERNEL[k] || { sub: "gating kernel" }).sub;
+const kstake = (k) => (KERNEL[k] || { stake: "" }).stake;
 
 // Derive the human-readable RULE a gate enforces for THIS call, straight from the real
 // trusted config (SCENARIOS[key].config). Presentation only — it explains the policy the
@@ -107,6 +119,7 @@ async function runGauntlet(trackEl, outEl, scenarioKey) {
     const rule = gatePolicy(c.kernel, config, tool);
     g.innerHTML =
       `<div class="gate-head"><span class="gate-name">${kname(c.kernel)}</span><span class="gate-sub">${ksub(c.kernel)}</span></div>` +
+      `<div class="gate-stake">${kstake(c.kernel)}</div>` +
       (rule ? `<div class="gate-policy"><span class="gp-label">RULE</span><span class="gp-text">${rule}</span></div>` : `<div class="gate-policy"></div>`) +
       `<div class="gate-arch"><span class="door l"></span><span class="door r"></span><span class="gate-stamp"></span></div>` +
       `<div class="gate-reason"></div><div class="gate-hash"></div>`;
@@ -170,20 +183,22 @@ async function runGauntlet(trackEl, outEl, scenarioKey) {
   if (killedAt >= 0) {
     const dk = certs[killedAt];
     const drule = gatePolicy(dk.kernel, config, tool);
+    const stopped = (CALLS[scenarioKey] || {}).stopped || "The action never happened.";
     outEl.className = "verdict-out killed";
     outEl.innerHTML =
-      `<div class="big-verdict deny">DENY</div>` +
-      (drule ? `<div class="verdict-rule">the <b>${kname(dk.kernel)} gate</b>’s rule: ${drule}</div>` : "") +
-      `<div class="verdict-why">verdict — ${dk.reason}</div>` +
-      `<div class="verdict-tag">The call was destroyed at the gate. The action never happened.</div>`;
+      `<div class="big-verdict deny">DENY · BLOCKED</div>` +
+      `<div class="verdict-consequence">${stopped} <span class="vc-tail">The model asked; the boundary said no.</span></div>` +
+      `<div class="verdict-rule">Stopped at the <b>${kname(dk.kernel)} gate</b>${drule ? " — " + drule : ""} · <span class="vr-reason">${dk.reason}</span> · <span class="vr-hash">cert ${dk.certHash}</span></div>`;
   } else {
     move(finish); await sleep(T.move);
     finish.classList.add("sealed"); token.classList.add("sealed");
     await sleep(T.seal);
     const vector = certs.map((c) => c.certHash);
+    const won = (CALLS[scenarioKey] || {}).won || "Cleared every gate.";
     outEl.className = "verdict-out sealed";
     outEl.innerHTML =
       `<div class="big-verdict allow">ALLOW · SEALED</div>` +
+      `<div class="verdict-consequence">${won} <span class="vc-tail">Every gate's rule was met.</span></div>` +
       `<div class="seal-cert"><span class="seal-cert-label">certificate</span>` +
       `<span class="seal-cert-hash">${res.certHash}</span></div>` +
       `<div class="seal-vector">${vector.map((h, i) => `<span>${kname(certs[i].kernel)}: ${h}</span>`).join("")}</div>`;
@@ -242,6 +257,10 @@ const hero = (() => {
         ? `run #${runCount} · cert identical <span class="lock">🔒</span>`
         : `run #${runCount} · CERT CHANGED ⚠`;
       againBtn.disabled = false;
+      // reveal the "try another call" picker only after the first run — the opening
+      // screen is one preselected attack + one button, no choose-first friction.
+      const ta = document.getElementById("try-another");
+      if (ta) ta.hidden = false;
     } catch (e) {
       showStageError(out, e);
     } finally {

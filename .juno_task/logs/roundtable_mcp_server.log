@@ -1,0 +1,34 @@
+2026-06-16 12:14:13,948 - mcp.server.lowlevel.server - DEBUG - Initializing server 'roundtable-ai'
+2026-06-16 12:14:13,949 - mcp.server.lowlevel.server - DEBUG - Registering handler for ListToolsRequest
+2026-06-16 12:14:13,949 - mcp.server.lowlevel.server - DEBUG - Registering handler for CallToolRequest
+2026-06-16 12:14:13,949 - mcp.server.lowlevel.server - DEBUG - Registering handler for ListResourcesRequest
+2026-06-16 12:14:13,949 - mcp.server.lowlevel.server - DEBUG - Registering handler for ReadResourceRequest
+2026-06-16 12:14:13,949 - mcp.server.lowlevel.server - DEBUG - Registering handler for PromptListRequest
+2026-06-16 12:14:13,949 - mcp.server.lowlevel.server - DEBUG - Registering handler for GetPromptRequest
+2026-06-16 12:14:13,949 - mcp.server.lowlevel.server - DEBUG - Registering handler for ListResourceTemplatesRequest
+2026-06-16 12:14:13,975 - roundtable_mcp_server.server - INFO - Verbose: False
+2026-06-16 12:14:13,975 - roundtable_mcp_server.server - INFO - Using subagents from environment variable: ['codex', 'claude', 'antigravity', 'cursor', 'copilot', 'kiro', 'grok']
+2026-06-16 12:14:13,975 - roundtable_mcp_server.server - INFO - Initializing Roundtable AI MCP Server
+2026-06-16 12:14:13,975 - roundtable_mcp_server.server - INFO - Enabled subagents: cursor, claude, codex, copilot, grok, kiro, antigravity
+2026-06-16 12:14:13,976 - roundtable_mcp_server.server - INFO - Working directory: /home/monkey/src
+2026-06-16 12:14:13,976 - roundtable_mcp_server.server - INFO - Verbose: False
+2026-06-16 12:14:13,976 - roundtable_mcp_server.server - DEBUG - Metrics collection disabled (set CLI_MCP_METRICS=true to enable)
+2026-06-16 12:14:13,976 - roundtable_mcp_server.server - INFO - ============================================================
+2026-06-16 12:14:13,976 - roundtable_mcp_server.server - INFO - Roundtable AI MCP Server vunknown starting at 2026-06-16 12:14:13.976133
+2026-06-16 12:14:13,976 - roundtable_mcp_server.server - INFO - ============================================================
+2026-06-16 12:14:13,976 - roundtable_mcp_server.server - INFO - Enabled subagents: cursor, claude, codex, copilot, grok, kiro, antigravity
+2026-06-16 12:14:13,978 - asyncio - DEBUG - Using selector: EpollSelector
+2026-06-16 12:14:13,987 - mcp.server.lowlevel.server - DEBUG - Received message: root=InitializedNotification(method='notifications/initialized', params=None, jsonrpc='2.0')
+2026-06-16 12:14:13,988 - mcp.server.lowlevel.server - DEBUG - Received message: <mcp.shared.session.RequestResponder object at 0x7c3a54d33530>
+2026-06-16 12:14:13,988 - mcp.server.lowlevel.server - INFO - Processing request of type ListToolsRequest
+2026-06-16 12:14:13,988 - mcp.server.lowlevel.server - DEBUG - Dispatching request of type ListToolsRequest
+2026-06-16 12:14:13,989 - mcp.server.lowlevel.server - DEBUG - Response sent
+2026-06-16 12:14:13,990 - mcp.server.lowlevel.server - DEBUG - Received message: <mcp.shared.session.RequestResponder object at 0x7c3a54a88b30>
+2026-06-16 12:14:13,990 - mcp.server.lowlevel.server - INFO - Processing request of type ListPromptsRequest
+2026-06-16 12:14:13,990 - mcp.server.lowlevel.server - DEBUG - Dispatching request of type ListPromptsRequest
+2026-06-16 12:14:13,990 - mcp.server.lowlevel.server - DEBUG - Received message: <mcp.shared.session.RequestResponder object at 0x7c3a54e33800>
+2026-06-16 12:14:13,990 - mcp.server.lowlevel.server - INFO - Processing request of type ListResourcesRequest
+2026-06-16 12:14:13,990 - mcp.server.lowlevel.server - DEBUG - Dispatching request of type ListResourcesRequest
+2026-06-16 12:14:13,990 - mcp.server.fastmcp.resources.resource_manager - DEBUG - Listing resources
+2026-06-16 12:14:13,990 - mcp.server.lowlevel.server - DEBUG - Response sent
+2026-06-16 12:14:13,991 - mcp.server.lowlevel.server - DEBUG - Response sent
