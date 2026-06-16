@@ -15,6 +15,7 @@
 </nav>
 
 <div class="wrap">
+  <div id="boot-error" class="boot-error" style="display:none"></div>
   <h1>The Gauntlet</h1>
   <p class="lede">Watch one tool call get <b>judged</b>. It travels through the gates the verified kernel sets in its path. Every gate either stamps it <span class="ink-allow">ALLOW</span> and passes it on, or slams it <span class="ink-deny">DENY</span> and destroys it on the spot. Clear every gate and it leaves as a sealed certificate. Nothing here is faked — the verdicts, the reasons, the cert are the real kernel deciding, live.</p>
 
@@ -91,6 +92,37 @@
   Real verdicts from the verified <code>seal-host</code> (7 Lean 4 kernels) — native binary over <code>POST /api/decide</code> (Docker), or the same kernel as in-browser WebAssembly (no backend). The model never runs; you supply the tool call, the proven decision procedure judges it. Spec layer is open; proof sources are held under the pre-award publication boundary. This is a demonstration, not the source.
 </footer>
 
+<script>
+// Boot guard (classic script, always runs). If gauntlet.js (an ES module) fails to
+// load — the usual cause is opening this file as file://, which blocks module imports
+// and the WASM fetch — none of its click handlers attach and the page looks inert.
+// Detect that and tell the viewer exactly how to fix it, instead of a dead page.
+(function () {
+  var lastErr = "";
+  window.addEventListener("error", function (e) {
+    if (e && (e.filename || "").indexOf("gauntlet") > -1 || (e && e.message)) lastErr = (e && e.message) || lastErr;
+  });
+  function banner(msg) {
+    var el = document.getElementById("boot-error");
+    if (!el) return;
+    el.style.display = "block";
+    el.innerHTML =
+      "<b>The Gauntlet could not start.</b> " + msg +
+      "<br>Serve it over HTTP rather than opening the file directly: " +
+      "<code>cd public &amp;&amp; python3 -m http.server</code>, then open " +
+      "<code>http://localhost:8000</code>. Opening it as <code>file://</code> blocks the kernel module.";
+  }
+  window.addEventListener("load", function () {
+    setTimeout(function () {
+      if (!window.__gauntletReady) {
+        banner(location.protocol === "file:"
+          ? "It was opened as a local file (file://)."
+          : "The page script did not initialise." + (lastErr ? " (" + lastErr + ")" : ""));
+      }
+    }, 2500);
+  });
+})();
+</script>
 <script src="wasm/seal.js"></script>
 <script type="module" src="gauntlet.js"></script>
 </body>

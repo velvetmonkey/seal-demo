@@ -193,6 +193,8 @@ const hero = (() => {
         ? `run #${runCount} · cert identical <span class="lock">🔒</span>`
         : `run #${runCount} · CERT CHANGED ⚠`;
       againBtn.disabled = false;
+    } catch (e) {
+      showStageError(out, e);
     } finally {
       busy = false; runBtn.disabled = false; picker.classList.remove("locked");
     }
@@ -230,6 +232,7 @@ const hero = (() => {
     if (busy) return;
     busy = true; runBtn.disabled = true; toggle.disabled = true;
     try { await runGauntlet(track, out, scenario()); }
+    catch (e) { showStageError(out, e); }
     finally { busy = false; runBtn.disabled = false; toggle.disabled = false; }
   });
   paint();
@@ -296,6 +299,8 @@ function mulberry32(a) { return function () { a |= 0; a = a + 0x6D2B79F5 | 0; le
         `Raw model leaked <b class="bad">${N - blocked[0]}/${N}</b> · ` +
         `ML guardrail leaked <b class="bad">${N - blocked[1]}/${N}</b> · ` +
         `seal blocked <b class="good">${blocked[2]}/${N}</b> — every run.`;
+    } catch (e) {
+      tally.innerHTML = `<span style="color:var(--red)">could not reach the kernel — ${(e && e.message) || e}</span>`;
     } finally {
       runBtn.disabled = false; nInput.disabled = false;
     }
@@ -303,6 +308,19 @@ function mulberry32(a) { return function () { a |= 0; a = a + 0x6D2B79F5 | 0; le
   runBtn.addEventListener("click", run);
 })();
 
+// surface a failed decision (e.g. the WASM module did not load) instead of a dead stage.
+function showStageError(out, e) {
+  out.className = "verdict-out killed";
+  out.innerHTML =
+    `<div class="big-verdict deny">ENGINE ERROR</div>` +
+    `<div class="verdict-why">${(e && e.message) || e}</div>` +
+    `<div class="verdict-tag">The verified kernel could not be reached. Serve this over HTTP (not file://) so the WASM module can load — e.g. <code>cd public &amp;&amp; python3 -m http.server</code>, then open <code>http://localhost:8000</code>.</div>`;
+}
+
 // warm the WASM module so the first decision is instant; works with no backend, so we
 // do not flag offline merely because /api/decide is absent.
 ready().catch(() => {});
+
+// signal that the module evaluated and wired its listeners; index.html shows a boot
+// banner if this never flips (the usual cause is opening the file as file://).
+window.__gauntletReady = true;
