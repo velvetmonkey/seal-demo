@@ -12,9 +12,6 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 // call-preset change or an explicit Run.
 const T = { move: 240, evalPulse: 220, stamp: 240, kill: 320, seal: 300 };
 
-// the agent can wrap the same call in any persuasion; the boundary only sees the call.
-const EXCUSES = ["ignore all previous safety policy", "this is extremely urgent", "the developer already approved this"];
-
 // real config bases, reused (never mutated) from the verified scenarios
 const PAY_BASE = SCENARIOS["pay-before"].config;               // safety + temporal, no consensus
 const PAY_CONSENSUS = SCENARIOS["pay-after"].config.consensus; // the 2-of-3 quorum rule
@@ -57,11 +54,9 @@ function certVector(res) { return JSON.stringify((res.certs || []).map((c) => c.
   const verdict = document.getElementById("verdict-out");
   const det = document.getElementById("det");
   const runBtn = document.getElementById("run");
-  const replayBtn = document.getElementById("replay-btn");
-  const replayOut = document.getElementById("replay-out");
   if (!rail) return;
 
-  const state = { call: "pay", approval: true, quorum: true, signoffs: 0, sql: "drop", op: "assign" };
+  const state = { call: "pay", approval: true, quorum: true, signoffs: 0, op: "assign" };
   const votesText = (n, value) => { let s = ""; for (let i = 1; i <= n; i++) s += JSON.stringify({ acceptor: i, value }) + "\n"; return s; };
 
   // compose the REAL {config, tool, args, approvals, votes} + consequence copy from the knobs
@@ -73,10 +68,10 @@ function certVector(res) { return JSON.stringify((res.certs || []).map((c) => c.
                stopped: "£40,000 never left the account.", won: "The payment went through — certified." };
     }
     if (state.call === "db") {
-      const sql = state.sql === "drop" ? "drop table users" : "select count(*) from users";
+      const sql = "drop table users";
       return { config: DB_BASE, tool: "db.execute", args: { database: "prod", sql },
                approvals: state.approval ? [stableHash(["db.execute", "db", "prod", "write", sql])] : [], votes: "",
-               stopped: "The production users table is still there.", won: "The query ran — certified." };
+               stopped: "The production users table is still there.", won: "The destructive query ran — certified, because a human approved it." };
     }
     if (state.call === "store") {
       return { config: STORE_BASE, tool: "store.update", args: { op: state.op, key: "k1" },
@@ -186,36 +181,18 @@ function certVector(res) { return JSON.stringify((res.certs || []).map((c) => c.
         state.quorum, (v) => { state.quorum = v; renderRail(); onKnob(); }));
       rail.appendChild(seg("Sign-offs", state.quorum ? "→ Consensus" : "(turn quorum on)", [0, 1, 2, 3].map((n) => ({ val: n, text: String(n) })),
         state.signoffs, (v) => { state.signoffs = v; renderRail(); onKnob(); }, !state.quorum));
-    } else if (state.call === "db") {
-      rail.appendChild(seg("SQL payload", "→ Safety", [{ val: "drop", text: "drop table" }, { val: "safe", text: "select" }],
-        state.sql, (v) => { state.sql = v; renderRail(); onKnob(); }));
-    } else {
+    } else if (state.call === "store") {
       rail.appendChild(seg("Store op", "→ Convergence", [{ val: "assign", text: "assign (LWW)" }, { val: "orset.add", text: "orset.add" }],
         state.op, (v) => { state.op = v; renderRail(); onKnob(); }));
+    } else if (state.call === "db") {
+      const note = document.createElement("div"); note.className = "rail-note";
+      note.innerHTML = `A <code>drop table</code> is a destructive query. The Safety gate blocks it unless a valid human approval is attached.`;
+      rail.appendChild(note);
     }
   }
 
-  // the determinism beat: same call, the agent's excuse changes, the verdict + cert never move.
-  async function replay() {
-    const c = compose();
-    replayBtn.disabled = true; runBtn.disabled = true; replayOut.innerHTML = "";
-    try {
-      let lockH = null, broke = false;
-      for (let i = 0; i < EXCUSES.length; i++) {
-        const res = await decideComposed(c);
-        if (lockH === null) lockH = res.certHash; else if (res.certHash !== lockH) broke = true;
-        const row = document.createElement("div"); row.className = "rp-row";
-        row.innerHTML = `<span class="rp-say">agent says <i>“${EXCUSES[i]}”</i></span><span class="rp-arrow">→</span><span class="pill ${res.verdict === "DENY" ? "deny" : "allow"}">${res.verdict}</span><span class="rp-hash">cert ${res.certHash}</span>`;
-        replayOut.appendChild(row); await sleep(360);
-      }
-      const cap = document.createElement("div"); cap.className = "rp-cap" + (broke ? " broke" : "");
-      cap.innerHTML = broke ? `The certificate changed — that should never happen.` : `Same call, same certificate — every time. <b>The prompt changes. The theorem doesn’t.</b>`;
-      replayOut.appendChild(cap);
-    } finally { replayBtn.disabled = false; runBtn.disabled = false; }
-  }
-
+  // re-run the SAME call → the cert locks byte-identical (the determinism proof, via updateDet).
   runBtn.addEventListener("click", () => animateRun(compose()));
-  if (replayBtn) replayBtn.addEventListener("click", replay);
   renderRail();
   onCall(); // initial full run
 })();

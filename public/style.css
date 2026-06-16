@@ -205,6 +205,8 @@ footer{border-top:1px solid var(--line);color:var(--mut);font-size:12px;padding:
 .verdict-meta .vr-hash{font-family:ui-monospace,monospace;font-size:12px;color:#52607a}
 .verdict-why{font-size:18px;margin-top:4px;color:var(--ink)}
 .seal-cert-hash{font-family:ui-monospace,monospace;font-size:18px;color:#ffd24a;word-break:break-all}
+.cert-note{font-size:12px;color:var(--mut);line-height:1.45;margin:0}
+.cert-note b{color:var(--ink);font-weight:600}
 
 /* the composition equation under the gate row */
 .equation{text-align:center;margin:8px 0 2px;font-size:15px;color:var(--mut);min-height:22px}
