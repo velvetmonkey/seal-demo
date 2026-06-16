@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
 <title>seal · the boundary is a theorem</title>
 <!-- bump ?v= on every push so browsers fetch fresh assets without a hard refresh -->
-<link rel="stylesheet" href="style.css?v=20260616m"/>
+<link rel="stylesheet" href="style.css?v=20260616n"/>
 </head>
 <body class="app">
 
@@ -25,7 +25,7 @@
     <div class="equation" id="equation"></div>
 
     <div class="verdict-out" id="verdict-out"></div>
-    <p class="cert-note">The hash is a <b>certificate</b> — a fingerprint of this exact call, config and verdict. The decision is a proven function, so the <b>same inputs always give the byte-identical cert</b> (change a knob and it changes — try it). Each gate signs its own cert; clear them all and the call leaves <b>sealed</b>.</p>
+    <p class="cert-note">The hash is the <b>seal</b> — a fingerprint of this exact call, config and verdict. The decision is a proven function, so the <b>same inputs always give the byte-identical seal</b>; change a knob and it changes (try it). Each gate emits its own seal; pass them all and the call leaves <b>sealed</b>.</p>
 
     <div class="run-row">
       <button class="run-btn" id="run">↻ Run the same call again</button>
@@ -35,7 +35,7 @@
 </main>
 
 <footer class="proofbar">
-  <span><b class="ink-allow">Proven</b> — ALLOW iff every gate allows (composition theorem); each gate correct in Lean&nbsp;4; re-runs give an identical cert.</span>
+  <span><b class="ink-allow">Proven</b> — ALLOW iff every gate allows (composition theorem); each gate correct in Lean&nbsp;4; re-runs give an identical seal.</span>
   <span><b class="ink-amber">Trusted</b> — Lean compiler + runtime · host transport (fail-closed) · canonical parser · the FFI seam.</span>
   <span><b>Not claimed</b> — model safety · anything outside the boundary. Verdicts are real (WASM / native <code>seal-host</code>); the model never runs.</span>
 </footer>
@@ -57,6 +57,6 @@
 })();
 </script>
 <script src="wasm/seal.js"></script>
-<script type="module" src="gauntlet.js?v=20260616m"></script>
+<script type="module" src="gauntlet.js?v=20260616n"></script>
 </body>
 </html>

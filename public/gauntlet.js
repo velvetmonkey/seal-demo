@@ -31,7 +31,7 @@ function gateMarkup(kernel, config, tool, decided) {
     `<div class="g-line"><span class="g-k">rule</span><span>${gatePolicy(kernel, config, tool)}</span></div>` +
     `<div class="gate-arch"><span class="door l"></span><span class="door r"></span><span class="gate-stamp">${decided ? (allow ? "ALLOW" : "DENY") : ""}</span></div>` +
     `<div class="g-result">${decided ? "→ " + gateResult(kernel, decided) : ""}</div>` +
-    `<div class="gate-hash">${decided ? "cert " + decided.certHash : ""}</div>`
+    `<div class="gate-hash">${decided ? "seal " + decided.certHash : ""}</div>`
   );
 }
 
@@ -65,21 +65,21 @@ function certVector(res) { return JSON.stringify((res.certs || []).map((c) => c.
       const config = state.quorum ? { ...PAY_BASE, consensus: PAY_CONSENSUS } : { ...PAY_BASE };
       return { config, tool: "payments.send", args: { amount: 40000, to: "GB-unlisted" },
                approvals: state.approval ? PAY_APPROVALS : [], votes: state.quorum ? votesText(state.signoffs, "payments.send") : "",
-               stopped: "£40,000 never left the account.", won: "The payment went through — certified." };
+               stopped: "£40,000 never left the account.", won: "The payment went through — sealed." };
     }
     if (state.call === "db") {
       const sql = "drop table users";
       return { config: DB_BASE, tool: "db.execute", args: { database: "prod", sql },
                approvals: state.approval ? [stableHash(["db.execute", "db", "prod", "write", sql])] : [], votes: "",
-               stopped: "The production users table is still there.", won: "The destructive query ran — certified, because a human approved it." };
+               stopped: "The production users table is still there.", won: "The destructive query ran — sealed, because a human approved it." };
     }
     if (state.call === "store") {
       return { config: STORE_BASE, tool: "store.update", args: { op: state.op, key: "k1" },
                approvals: state.approval ? STORE_APPROVALS : [], votes: "",
-               stopped: "The corrupting write never landed — replicas stay consistent.", won: "A provably-convergent write — certified." };
+               stopped: "The corrupting write never landed — replicas stay consistent.", won: "A provably-convergent write — sealed." };
     }
     return { config: SELF.config, tool: "approve", args: { target: 1 }, approvals: [], votes: "",
-             stopped: "The agent could not rubber-stamp itself.", won: "Approved — certified." };
+             stopped: "The agent could not rubber-stamp itself.", won: "Approved — sealed." };
   }
 
   const callString = (c) => `${c.tool} ${JSON.stringify(c.args).replace(/"([^"]+)":/g, "$1: ")}`;
@@ -93,17 +93,17 @@ function certVector(res) { return JSON.stringify((res.certs || []).map((c) => c.
     if (denyCert) {
       verdict.className = "verdict-out killed";
       verdict.innerHTML = `<span class="big-verdict deny">BLOCKED</span><span class="verdict-consequence">${composed.stopped}</span>` +
-        `<span class="verdict-meta">stopped at the <b>${kname(denyCert.kernel)}</b> gate · cert <span class="vr-hash">${denyCert.certHash}</span></span>`;
+        `<span class="verdict-meta">stopped at the <b>${kname(denyCert.kernel)}</b> gate · seal <span class="vr-hash">${denyCert.certHash}</span></span>`;
     } else {
       verdict.className = "verdict-out sealed";
       verdict.innerHTML = `<span class="big-verdict allow">SEALED</span><span class="verdict-consequence">${composed.won}</span>` +
-        `<span class="verdict-meta">certificate <span class="seal-cert-hash">${res.certHash}</span></span>`;
+        `<span class="verdict-meta">seal <span class="seal-cert-hash">${res.certHash}</span></span>`;
     }
   }
   function updateDet(res, composed) {
     const v = certVector(res), s = sig(composed);
-    if (s !== prevSig) { lockVector = v; runCount = 1; det.className = "det"; det.innerHTML = `<span class="sub">cert ${res.certHash} · run again to verify ↻</span>`; }
-    else { runCount++; const same = v === lockVector; det.className = "det" + (same ? " locked" : " broke"); det.innerHTML = same ? `run #${runCount} · cert identical <span class="lock">🔒</span>` : `run #${runCount} · CERT CHANGED ⚠`; }
+    if (s !== prevSig) { lockVector = v; runCount = 1; det.className = "det"; det.innerHTML = `<span class="sub">seal ${res.certHash} · run again to verify ↻</span>`; }
+    else { runCount++; const same = v === lockVector; det.className = "det" + (same ? " locked" : " broke"); det.innerHTML = same ? `run #${runCount} · seal identical <span class="lock">🔒</span>` : `run #${runCount} · SEAL CHANGED ⚠`; }
     prevSig = s;
   }
 
@@ -138,7 +138,7 @@ function certVector(res) { return JSON.stringify((res.certs || []).map((c) => c.
       g.classList.add("eval"); await sleep(T.evalPulse); g.classList.remove("eval"); if (my !== runToken) return;
       g.querySelector(".gate-stamp").textContent = c.verdict === "deny" ? "DENY" : "ALLOW";
       g.querySelector(".g-result").textContent = "→ " + gateResult(c.kernel, c);
-      g.querySelector(".gate-hash").textContent = "cert " + c.certHash;
+      g.querySelector(".gate-hash").textContent = "seal " + c.certHash;
       shown.push(c); renderEquation(eq, shown, c.verdict === "deny" ? "DENY" : (i === gates.length - 1 ? "ALLOW" : "…"));
       if (c.verdict === "deny") { g.classList.add("deny"); token.classList.add("destroyed"); killedAt = i; for (let j = i + 1; j < gates.length; j++) gates[j].classList.add("unreached"); await sleep(T.kill); break; }
       g.classList.add("allow"); await sleep(T.stamp); if (my !== runToken) return;
