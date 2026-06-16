@@ -34,5 +34,14 @@ export async function decideCustom(tool, args, approvals = []) {
   return decideWith(CFG_STANDARD, buildStepInput({ tool, args, approvals }), tool);
 }
 
+// Decide an arbitrary trusted-config + tool call composed live by the presentation
+// layer (the Policy Lab). seal_init accepts any trusted config, so this is a thin
+// adapter over decideWith — no kernel logic. Reuses the WARM module singleton via
+// mod(): the 617-module runtime instantiates once; each call does only the cheap
+// seal_init(config) reset + seal_decide(step), so live re-decide has no cold re-init.
+export async function decideConfig(config, { tool, args = {}, approvals = [], votes = "" }) {
+  return decideWith(config, buildStepInput({ tool, args, approvals, votes }), tool);
+}
+
 // Warm the module (so first real decision is instant) and report readiness.
 export async function ready() { await mod(); return true; }

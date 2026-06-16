@@ -72,9 +72,12 @@ export const SCENARIOS = {
 const rpc = (tool, args) => JSON.stringify({ jsonrpc: "2.0", id: 1, method: "tools/call", params: { name: tool, arguments: args } });
 
 // Build the seal_host_step input JSON for a scenario (or a custom tool call).
-export function buildStepInput({ tool, args, approvals = [], now = 1000 }) {
+// `votes` is the raw consensus votes-file text (NDJSON lines
+// `{"acceptor":<nat>,"value":"<tool>"}`); default "" is byte-identical to before, so
+// existing scenarios/conformance are unaffected.
+export function buildStepInput({ tool, args, approvals = [], now = 1000, votes = "" }) {
   return stringifyBig({ line: rpc(tool, args), now,
-    approvals: approvals.map((t) => ({ target: t })), votes: "", grants: "", forecasts: "" });
+    approvals: approvals.map((t) => ({ target: t })), votes, grants: "", forecasts: "" });
 }
 
 // Parse seal_host_step output -> demo-friendly verdict.
