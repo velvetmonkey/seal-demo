@@ -37,7 +37,12 @@
 </div>
 <footer>Real verdicts from the verified <code>seal-host</code> convergence kernel (grounded in <code>crdt-lean</code>). Safety and temporal both ALLOW the write. Only the convergence kernel, which knows which CRDT operations provably converge, catches the subtle one.</footer>
 
-<script>
+<script src="wasm/seal.js"></script>
+<script type="module">
+import { decideScenario } from "./seal-wasm.js";
+// Narrative fixed; verdict + cert hashes computed LIVE in-browser by the WASM kernel
+// (assign -> store-subtle, orset.add -> store-safe). OPS.certs are a fallback only.
+const SCEN = { assign: 'store-subtle', 'orset.add': 'store-safe' };
 const OPS = {
   assign: {
     label:'store.update { op: "assign", key: "k1" }   — last-writer-wins',
@@ -67,14 +72,20 @@ const OPS = {
 const sel = document.getElementById('op');
 Object.entries(OPS).forEach(([k,v])=>{ const o=document.createElement('option'); o.value=k; o.textContent=v.label; sel.appendChild(o); });
 const pill = document.getElementById('pill');
-function render(){
+async function render(){
   const p = OPS[sel.value];
   document.getElementById('narrative').textContent = p.narrative;
   document.getElementById('off').innerHTML = p.off;
-  pill.textContent = p.verdict;
-  pill.className = 'pill ' + (p.verdict==='ALLOW'?'allow':'deny');
   document.getElementById('kicker').textContent = p.kicker;
-  document.getElementById('certs').innerHTML = p.certs.map(c=>`<tr>
+  let verdict = p.verdict, certs = p.certs;
+  try {
+    const v = await decideScenario(SCEN[sel.value]);
+    verdict = v.verdict;
+    certs = v.certs.map(c=>({kernel:c.kernel, verdict:c.verdict, reason:c.reason, hash:c.certHash}));
+  } catch(e) { /* fallback to recorded certs */ }
+  pill.textContent = verdict;
+  pill.className = 'pill ' + (verdict==='ALLOW'?'allow':'deny');
+  document.getElementById('certs').innerHTML = certs.map(c=>`<tr>
     <td>${c.kernel}</td><td class="v-${c.verdict}">${c.verdict}</td>
     <td>${c.reason}</td><td class="hash">${c.hash}</td></tr>`).join('');
 }

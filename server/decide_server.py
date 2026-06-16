@@ -105,7 +105,7 @@ def store_payload():
 SCENARIOS = {
     "destructive-sql": lambda: run_decision(standard_payload(), "db.execute", {"database": "prod", "sql": "drop table users"}),
     "self-approve":    lambda: run_decision(standard_payload(), "approve", {"target": 1}),
-    "wire-40k":        lambda: run_decision(standard_payload(), "payments.send", {"amount": 40000, "to": "GB-unlisted"}),
+    "wire-40k":        lambda: run_decision(standard_payload(), "payments.send", {"amount": 40000, "to": "GB-unlisted"}, PAY_T),
     "pay-before":      lambda: run_decision(pay_payload(False), "payments.send", {"amount": 40000, "to": "supplier-77"}, PAY_T),
     "pay-after":       lambda: run_decision(pay_payload(True), "payments.send", {"amount": 40000, "to": "supplier-77"}, PAY_T),
     "store-safe":      lambda: run_decision(store_payload(), "store.update", {"op": "orset.add", "key": "k1"}, STORE_T),

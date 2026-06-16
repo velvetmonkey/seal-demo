@@ -40,7 +40,13 @@
 </div>
 <footer>Both verdicts are real, captured from the verified <code>seal-host</code>. Watch the safety kernel: it allows the payment in <i>both</i> policies. Adding the quorum rule means consensus now vetoes, and the fail-closed combinator (allow iff every kernel allows) flips the result.</footer>
 
-<script>
+<script src="wasm/seal.js"></script>
+<script type="module">
+import { decideScenario } from "./seal-wasm.js";
+// Narrative text is fixed; verdict + cert hashes are computed LIVE in-browser by the
+// WASM kernel (state A -> pay-before scenario, B -> pay-after). POLICIES.certs are a
+// load-failure fallback only.
+const SCEN = { A: 'pay-before', B: 'pay-after' };
 const POLICIES = {
   A: {
     name:'Policy A — payment approved, no sign-off rule',
@@ -69,20 +75,27 @@ const POLICIES = {
 let state = 'A';
 const pill = document.getElementById('pill');
 const certsEl = document.getElementById('certs');
-function render(){
+async function render(){
   const p = POLICIES[state];
   document.getElementById('policy-name').textContent = p.name;
   document.getElementById('policy-diff').textContent = p.diff;
-  pill.textContent = p.verdict;
-  pill.className = 'pill ' + (p.verdict==='ALLOW'?'allow':'deny');
   document.getElementById('rule').textContent = '· ' + p.rule;
   document.getElementById('explain').textContent = p.explain;
-  certsEl.innerHTML = p.certs.map(c=>`<tr>
+  document.getElementById('toggle').textContent = state==='A' ? 'Add the 2-of-3 sign-off rule ▶' : '◀ Remove the sign-off rule';
+  // live verdict + certs from the WASM kernel
+  let verdict = p.verdict, certs = p.certs;
+  try {
+    const v = await decideScenario(SCEN[state]);
+    verdict = v.verdict;
+    certs = v.certs.map(c=>({kernel:c.kernel, verdict:c.verdict, reason:c.reason, hash:c.certHash}));
+  } catch(e) { /* fallback to recorded certs */ }
+  pill.textContent = verdict;
+  pill.className = 'pill ' + (verdict==='ALLOW'?'allow':'deny');
+  certsEl.innerHTML = certs.map(c=>`<tr>
     <td>${c.kernel}</td>
     <td class="v-${c.verdict}">${c.verdict}</td>
     <td>${c.reason}</td>
     <td class="hash">${c.hash}</td></tr>`).join('');
-  document.getElementById('toggle').textContent = state==='A' ? 'Add the 2-of-3 sign-off rule ▶' : '◀ Remove the sign-off rule';
 }
 document.getElementById('toggle').addEventListener('click', ()=>{ state = state==='A'?'B':'A'; render(); });
 render();

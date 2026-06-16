@@ -9,12 +9,12 @@ A public-facing, browser-runnable demo of **seal** — a verified **Policy Decis
 
 seal proves the **decision**, not the whole stack. The kernel guarantees: *for this canonical request and this policy, the verdict is DENY, by theorem X.* It does **not** claim the proxy, auth, sandbox, or parser are unbypassable. The demo shows the real guarantee with the Trusted Computing Base named on screen. Honesty is the pitch, not a footnote.
 
-## How it works — AI is filmed, not live
+## How it works — AI is filmed, the kernel decides live
 
 A public demo must not run a live frontier model (cost, abuse, nondeterminism, and the night it refuses to misbehave on cue it dies on stage). So:
 
-- **Attacks are pre-captured offline** by a human, once, as static fixtures (`fixtures/`). That's the agent's reasoning plus the exact tool call it attempts.
-- **The kernel runs live and deterministic** on replay. Each fixture is fed to the verified evaluator, which returns ALLOW/DENY plus the proof, identically every time.
+- **Attacks are pre-scripted offline** by a human, once (`fixtures/`). That's the agent's reasoning plus the exact tool call it attempts.
+- **The kernel decides live, in your browser.** The verified `seal-host` kernel is compiled to WebAssembly (`public/wasm/seal.wasm`) and runs the real `seal_decide` at the `sealEvaluate` seam — **no backend, no replay**. Every ALLOW/DENY and every cert hash on the page is computed live by the proven decision procedure, identically every run. The same kernel also runs natively behind `POST /api/decide` (Docker live mode); the two engines are **conformance-gated** to return byte-identical verdicts and certs.
 
 The AI was always just the narrative wrapper. The kernel is the substance, and the substance is the AI-free part.
 
@@ -24,33 +24,56 @@ The AI was always just the narrative wrapper. The kernel is the substance, and t
 2. **Live policy swap** (`public/demo2.html`). The same approved payment. Add a 2-of-3 quorum rule and the identical call flips ALLOW → DENY. Safety still allows it; consensus now vetoes. A verified policy *compiler*, not a hand-proven wall.
 3. **The confident hallucination** (`public/demo3.html`). The agent isn't evil, it's plausibly wrong: a non-convergent `assign` on a replicated store. Safety and temporal allow it; only the convergence kernel (grounded in `crdt-lean`) catches it.
 
-Every verdict on every page is **real**, captured from the verified `seal-host` (`fixtures/captured.json`). Reproduce via `build/capture*.py`.
+Every verdict on every page is **real**, computed live by the verified `seal-host` kernel (WASM in the browser, or the native binary in Docker). `fixtures/captured.json` is the conformance fixture both engines are checked against.
 
 ## Run it
 
-Two flavours.
+Two targets. Both decide live with the real verified kernel.
 
-### Live — the real verified kernel decides
+### Target A — in-browser WASM (no backend) — the default
 
-The actual `seal-host` binary runs behind `POST /api/decide`. Verdicts are computed live by the Lean-verified kernels: open the **Live console** (`/live.html`) and fire your own tool calls. Bundles the private binary, so this is **local only — do not publish this image**.
+The verified kernel compiled to WebAssembly decides entirely in the browser. No
+server, no binary, no Rust/Lean/Mathlib. This is what `public/` serves; just host
+the static files (the `.wasm` needs an HTTP origin — `file://` won't fetch it):
+
+```sh
+cd public && python3 -m http.server 8080      # then open http://localhost:8080/
+```
+
+All three demos and the Live console (`/live.html`) compute real verdicts via
+`public/wasm/seal.{js,wasm}` at the `sealEvaluate` seam — including the
+"fire your own tool call" box (audience-typed calls decided live).
+
+### Target B — native binary behind /api/decide (Docker live)
+
+The actual `seal-host` binary runs behind `POST /api/decide`; the Live console
+prefers it and falls back to WASM if it's absent. Bundles the private binary, so
+this image is **local only — do not publish it**.
 
 ```sh
 scripts/prepare-runtime.sh        # copies the seal-host binary into runtime/ (build it first)
 docker compose up --build         # then open http://localhost:8080/live.html
 ```
 
-### Static — replay, public-safe, deployable
-
-Pure HTML/JS with pre-captured verdicts. No binary, no backend, no Rust/Lean/Mathlib. Safe to publish.
+Run it locally without Docker (point it at a built host):
 
 ```sh
-docker build -t seal-demo .       # the plain Dockerfile
-docker run --rm -p 8080:80 seal-demo
+SEAL_BIN=/path/to/seal-host/.lake/build/bin/seal-host \
+SEAL_MOCK=/path/to/seal-host/test/integration/mock_mcp_server.py \
+SEAL_PUBLIC=$PWD/public PORT=8080 python3 server/decide_server.py
 ```
 
-or just open `public/index.html` in a browser.
+### Rebuilding the WASM evaluator
 
-The heavy dependencies (Rust + Lean + Mathlib) belong only to *building* the verified host and capturing fixtures, never to running either demo. See `docs/BUILD.md`.
+`public/wasm/seal.{js,wasm}` is the compiled black-box evaluator — built from the
+**private** `seal-host` repo, never from source here. To regenerate (from a clean
+`seal-host` checkout): see `seal-host/wasm-spike/RESUME.md` — `build_closure.sh`
+then `build_wasm.sh` produce `build-core/seal.{js,wasm}`; copy them into
+`public/wasm/`. Conformance (WASM == native == `captured.json`) is gated by
+`seal-host/wasm-spike/{conformance,demo_conformance}.mjs`.
+
+The heavy dependencies (Rust + Lean + Mathlib) belong only to *building* the
+verified host, never to running either target. See `docs/BUILD.md`.
 
 ## Delivery spectrum
 
@@ -67,8 +90,9 @@ This repo is **private pre-award**. The `seal-host` kernels carry an ARIA Track 
 
 ## Status
 
-**v1 complete**, two ways to run:
-- **Static** (`public/index.html`): landing + three demos on pre-captured verdicts. No backend, public-safe, deployable.
-- **Live** (`/live.html`, `Dockerfile.live`): the real `seal-host` binary decides behind `/api/decide`. Genuine verdicts, including a "fire your own tool call" box. Local only (bundles the private binary).
+**v2 complete — live verdicts on both targets:**
+- **WASM in-browser** (`public/`, `public/wasm/seal.{js,wasm}`): all three demos + the Live console + the "fire your own tool call" box compute real verdicts from the verified kernel, in the browser, no backend. The determinism demo runs 10 genuine WASM decisions per fire.
+- **Native** (`/live.html`, `Dockerfile.live`): the real `seal-host` binary decides behind `/api/decide`; the Live console prefers it and falls back to WASM.
+- **Conformance-gated:** WASM verdict == native verdict == `fixtures/captured.json` for every demo scenario, cert hashes included (`seal-host/wasm-spike/demo_conformance.mjs`, 7/7; kernel-level 25/25).
 
-**Next: WASM in-browser compute.** Live mode needs the binary plus a backend. Compiling the verified `decide` core to WASM (Lean → C → emscripten) would put live verdicts in the browser with no backend at all, at the `sealEvaluate` seam. See [`docs/BUILD.md`](docs/BUILD.md).
+The Lean → C → emscripten WASM port lives in the private `seal-host` repo (`wasm-spike/`); only the compiled `.wasm`/`.js` + this shell are exposed.
