@@ -44,15 +44,14 @@ The AI was always just the narrative wrapper. The kernel is the substance, and t
 
 ## The Gauntlet (`public/index.html`)
 
-One guided page. You watch a single tool call get **judged gate by gate**, instead of reading a verdict table. The call travels through the gating kernels in series; each gate stamps it ALLOW (green, with the real one-line reason) and passes it on, or slams it DENY (red, with the reason) and destroys it on the spot. Clear every gate and the call leaves as a sealed certificate showing its real cert hash. The page folds the old three demos into one stage show:
+One guided page, two stages. You watch a single tool call get **judged gate by gate**, instead of reading a verdict table. Each gate shows three registers ranked by size — a plain-English **stake** ("Could move money or wreck data — needs a human's say-so"), the real **rule** from the trusted config, and the dim **cert hash** — so a non-technical viewer and a formal-methods reviewer both read it at a glance.
 
-1. **The Gauntlet + determinism.** Pick a call, send it, watch it run the gates. Re-run it: the path is the same and the certificate locks to the **same hash every time** — proof that does not flicker.
-2. **The policy flip.** The same approved payment. Add one 2-of-3 quorum rule and re-run: the call that sailed through now visibly walls at the consensus gate. Safety still allows it; consensus now vetoes. A verified policy *compiler*, not a hand-proven wall.
-3. **Probability leaks, proof holds.** The same attack dropped into three lanes at once — a raw model and an ML guardrail (illustrative, labelled) leak; seal's lane (the real kernel) blocks every run.
+1. **The Gauntlet (hero) + determinism.** A jailbroken agent's call animates through the gating kernels in series; each gate stamps it ALLOW and passes it on, or slams it DENY and destroys it (the DENY leads with the counterfactual — "£40,000 never left the account"). Clear every gate and the call leaves as a sealed certificate. Re-run it: the path is the same and the certificate locks to the **same hash every time** — proof that does not flicker.
+2. **The Policy Lab.** One fixed call, a handful of bounded knobs (human approval, the 2-of-3 quorum rule, sign-offs 0–3, the call itself). Flip a knob and the verified kernel **re-decides live**; the affected gate flips ALLOW↔DENY, a derived config-diff shows the real edit (`consensus.high_stakes: [] → ["payments.send"]`, the actual vote lines added), and a one-line causal readout carries the kernel's real reason. Scrub sign-offs 1→2 and the consensus gate flips DENY→ALLOW on the same call — real **verified quorum agreement** (majority check), not Paxos.
 
 The plumbing (WASM-vs-native, conformance, the TCB) lives in one collapsible **Under the hood** panel, off the hero path. The interactive **Live console** (`public/live.html`) lets you fire your own tool calls at the real binary.
 
-Every verdict in seal's gates and lane is **real**, computed live by the verified `seal-host` kernel (WASM in the browser, or the native binary in Docker). `fixtures/captured.json` is the conformance fixture both engines are checked against.
+Every verdict in seal's gates is **real**, computed live by the verified `seal-host` kernel (WASM in the browser, or the native binary in Docker). `fixtures/captured.json` is the conformance fixture both engines are checked against.
 
 ## Run it
 
