@@ -5,6 +5,9 @@
 // (decideScenario / POST /api/decide) — never faked. The illustrative raw/ML lanes in
 // the three-lane contrast are RNG and labelled as such. No kernel source here.
 import { decideScenario, ready } from "./seal-wasm.js";
+// read-only: the real trusted-config payloads each scenario is judged under, so each
+// gate can show the actual rule it enforces (never modified here — just read).
+import { SCENARIOS } from "./seal-config.js";
 
 // ── the seam: native verified binary first (POST /api/decide, Docker live), else the
 // same kernel compiled to WASM in-browser. Same schema both ways, so the animation is
@@ -50,6 +53,41 @@ const KERNEL = {
 const kname = (k) => (KERNEL[k] || { name: k }).name;
 const ksub = (k) => (KERNEL[k] || { sub: "gating kernel" }).sub;
 
+// Derive the human-readable RULE a gate enforces for THIS call, straight from the real
+// trusted config (SCENARIOS[key].config). Presentation only — it explains the policy the
+// kernel consumes; it never changes a verdict. Returns "" if the config is unavailable.
+function gatePolicy(kernel, config, tool) {
+  if (!config) return "";
+  switch (kernel) {
+    case "safety": {
+      const r = (config.safety && config.safety.tools || []).find((t) => t.name === tool);
+      if (!r) return "guarded tools need a valid human approval";
+      if (r.mode === "deny") return `${tool} is flat-denied — never permitted`;
+      if (r.match && r.match.type === "contains_any_ci")
+        return `needs a human approval when ${r.match.arg} contains “${(r.match.needles || []).join(" / ")}”`;
+      return `${tool} is guarded — needs a valid human approval`;
+    }
+    case "temporal":
+      return (config.temporal && (config.temporal.policies || []).length)
+        ? "the event trace must satisfy the temporal policy"
+        : "the event trace must contain no forbidden sequence";
+    case "consensus": {
+      const c = config.consensus || {};
+      const hs = c.high_stakes || [];
+      if (hs.includes(tool))
+        return `high-stakes — needs a 2-of-3 sign-off (roster ${(c.roster || []).join("/")})`;
+      return "high-stakes tools need a 2-of-3 quorum sign-off";
+    }
+    case "convergence": {
+      const t = (config.convergence && config.convergence.tools || []).find((x) => x.tool === tool);
+      if (t) return `the “${t.op_arg}” op must be a proven-convergent CRDT operation`;
+      return "replicated-store writes must be convergence-safe";
+    }
+    default:
+      return "a verified gating kernel";
+  }
+}
+
 // ── the gate track. Builds gates from the REAL certs array (only the kernels that
 // gated this call), animates one call-token through them in series, stamps each gate
 // with its real verdict/reason/hash, kills the token at the first deny, seals on a
@@ -57,14 +95,19 @@ const ksub = (k) => (KERNEL[k] || { sub: "gating kernel" }).sub;
 async function runGauntlet(trackEl, outEl, scenarioKey) {
   const res = await decide({ scenario: scenarioKey });
   const certs = res.certs || [];
+  const scn = SCENARIOS[scenarioKey] || {};
+  const config = scn.config, tool = scn.tool || res.tool;
 
-  // build track: gates + finish slot + the moving token
+  // build track: gates + finish slot + the moving token. Each gate shows the real RULE
+  // it enforces (from the trusted config) so the verdict is legible, not arbitrary.
   trackEl.innerHTML = "";
   const gates = certs.map((c, i) => {
     const g = document.createElement("div");
     g.className = "gate";
+    const rule = gatePolicy(c.kernel, config, tool);
     g.innerHTML =
       `<div class="gate-head"><span class="gate-name">${kname(c.kernel)}</span><span class="gate-sub">${ksub(c.kernel)}</span></div>` +
+      (rule ? `<div class="gate-policy"><span class="gp-label">RULE</span><span class="gp-text">${rule}</span></div>` : `<div class="gate-policy"></div>`) +
       `<div class="gate-arch"><span class="door l"></span><span class="door r"></span><span class="gate-stamp"></span></div>` +
       `<div class="gate-reason"></div><div class="gate-hash"></div>`;
     trackEl.appendChild(g);
@@ -83,12 +126,15 @@ async function runGauntlet(trackEl, outEl, scenarioKey) {
   outEl.innerHTML = "";
   await sleep(40); // let layout settle so offsets are real
   const tw = token.offsetWidth;
+  // align the token to the gate's ARCH (the visual doorway), not the whole column, so it
+  // stays centred on the gate even though the rule caption makes the column taller.
+  const visual = (g) => (g.querySelector && g.querySelector(".gate-arch")) || g;
   const midY = (el) => el.offsetTop + el.offsetHeight / 2 - token.offsetHeight / 2;
   const centerX = (el) => el.offsetLeft + el.offsetWidth / 2 - tw / 2;
-  const move = (el) => { token.style.transform = `translate(${centerX(el)}px, ${midY(el)}px)`; };
+  const move = (g) => { const el = visual(g); token.style.transform = `translate(${centerX(el)}px, ${midY(el)}px)`; };
 
   // park token at the start (left of gate 0)
-  token.style.transform = `translate(0px, ${midY(gates[0] || finish)}px)`;
+  token.style.transform = `translate(0px, ${midY(visual(gates[0] || finish))}px)`;
   await sleep(160);
 
   let killedAt = -1;
@@ -122,10 +168,13 @@ async function runGauntlet(trackEl, outEl, scenarioKey) {
   }
 
   if (killedAt >= 0) {
+    const dk = certs[killedAt];
+    const drule = gatePolicy(dk.kernel, config, tool);
     outEl.className = "verdict-out killed";
     outEl.innerHTML =
       `<div class="big-verdict deny">DENY</div>` +
-      `<div class="verdict-why"><b>${kname(certs[killedAt].kernel)} gate</b> — ${certs[killedAt].reason}</div>` +
+      (drule ? `<div class="verdict-rule">the <b>${kname(dk.kernel)} gate</b>’s rule: ${drule}</div>` : "") +
+      `<div class="verdict-why">verdict — ${dk.reason}</div>` +
       `<div class="verdict-tag">The call was destroyed at the gate. The action never happened.</div>`;
   } else {
     move(finish); await sleep(T.move);
