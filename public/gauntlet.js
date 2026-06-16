@@ -306,75 +306,9 @@ const hero = (() => {
   paint();
 })();
 
-// ──────────────────────────────────────── THREE-LANE CONTRAST ─────────────────────
-// seal's lane is the REAL kernel (deterministic). raw/ML lanes are illustrative RNG,
-// labelled as such — they show probability leaking while proof holds.
-function mulberry32(a) { return function () { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
-
-(() => {
-  const lanesEl = document.getElementById("lanes");
-  const runBtn = document.getElementById("lane-run");
-  const nInput = document.getElementById("lane-n");
-  const tally = document.getElementById("lane-tally");
-  if (!lanesEl) return;
-
-  // illustrative leak rates: raw model mostly obeys the jailbreak; ML guardrail misses ~30%
-  const LANES = [
-    { key: "raw",  name: "Raw model",    tag: "illustrative · no guard",          block: (rng) => rng() < 0.2, real: false },
-    { key: "ml",   name: "ML guardrail", tag: "illustrative · probabilistic",     block: (rng) => rng() < 0.7, real: false },
-    { key: "seal", name: "seal",         tag: "REAL verified kernel",             block: null,                  real: true },
-  ];
-  const ATTACK = "wire-40k"; // the headline £40k wire — same attack into all three lanes
-
-  function laneShell() {
-    lanesEl.innerHTML = "";
-    return LANES.map((L) => {
-      const el = document.createElement("div");
-      el.className = "lane2" + (L.real ? " solid" : " porous");
-      el.innerHTML = `<div class="lane2-head"><span class="lane2-name">${L.name}</span><span class="lane2-tag ${L.real ? "real" : "illus"}">${L.tag}</span></div><div class="lane2-cells"></div><div class="lane2-score"></div>`;
-      lanesEl.appendChild(el);
-      return el;
-    });
-  }
-
-  async function run() {
-    const N = Math.max(1, Math.min(40, parseInt(nInput.value, 10) || 12));
-    runBtn.disabled = true; nInput.disabled = true;
-    const shells = laneShell();
-    const blocked = [0, 0, 0];
-    const seeds = [...ATTACK].reduce((h, c) => (h * 31 + c.charCodeAt(0)) | 0, 7);
-    const rngs = LANES.map((L, i) => mulberry32(seeds ^ (L.key.length * 2654435761) ^ (i * 40503)));
-    try {
-      for (let r = 0; r < N; r++) {
-        for (let li = 0; li < LANES.length; li++) {
-          const L = LANES[li];
-          let isBlocked;
-          if (L.real) { const res = await decide({ scenario: ATTACK }); isBlocked = res.verdict === "DENY"; }
-          else { isBlocked = L.block(rngs[li]); }
-          if (isBlocked) blocked[li] += 1;
-          const cell = document.createElement("div");
-          cell.className = "cell2 " + (isBlocked ? "blocked" : "leaked");
-          cell.textContent = isBlocked ? "✓" : "✗";
-          if (!isBlocked) cell.title = "leaked";
-          shells[li].querySelector(".lane2-cells").appendChild(cell);
-          shells[li].querySelector(".lane2-score").innerHTML =
-            L.real ? `<b>${blocked[li]}/${r + 1}</b> blocked · proof holds`
-                   : `<b>${(r + 1) - blocked[li]}/${r + 1}</b> leaked`;
-          await sleep(34);
-        }
-      }
-      tally.innerHTML =
-        `Raw model leaked <b class="bad">${N - blocked[0]}/${N}</b> · ` +
-        `ML guardrail leaked <b class="bad">${N - blocked[1]}/${N}</b> · ` +
-        `seal blocked <b class="good">${blocked[2]}/${N}</b> — every run.`;
-    } catch (e) {
-      tally.innerHTML = `<span style="color:var(--red)">could not reach the kernel — ${(e && e.message) || e}</span>`;
-    } finally {
-      runBtn.disabled = false; nInput.disabled = false;
-    }
-  }
-  runBtn.addEventListener("click", run);
-})();
+// (The three-lane contrast was cut: two of its lanes were illustrative RNG, and
+// invented leak rates next to real verdicts read as rigged. The Policy Lab's live
+// DENY→ALLOW makes the "proof holds" point truthfully, with no invented numbers.)
 
 // surface a failed decision (e.g. the WASM module did not load) instead of a dead stage.
 function showStageError(out, e) {

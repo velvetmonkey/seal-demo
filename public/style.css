@@ -211,28 +211,6 @@ footer{border-top:1px solid var(--line);color:var(--mut);font-size:12px;padding:
 .pf-rule code{font-size:13px}
 .call-banner.static{margin-bottom:8px}
 
-/* three-lane contrast */
-.lanes2{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin:10px 0}
-.lane2{padding:16px;border-radius:14px;min-height:160px}
-.lane2.solid{background:#0c1622;border:2px solid rgba(54,211,153,.45)}
-.lane2.porous{background:#0c1018;border:2px dashed #2b3b50;opacity:.92}
-.lane2-head{display:flex;flex-direction:column;gap:2px;margin-bottom:12px}
-.lane2-name{font-size:17px;font-weight:700}
-.lane2-tag{font-size:11px;text-transform:uppercase;letter-spacing:.06em}
-.lane2-tag.real{color:var(--green)}
-.lane2-tag.illus{color:var(--amber)}
-.lane2-cells{display:flex;flex-wrap:wrap;gap:5px;min-height:54px;margin-bottom:10px}
-.cell2{width:22px;height:22px;border-radius:6px;display:grid;place-items:center;font-size:12px;font-weight:800}
-.cell2.blocked{background:rgba(54,211,153,.18);color:var(--green)}
-.cell2.leaked{background:rgba(248,114,114,.24);color:var(--red)}
-.lane2-score{font-size:13px;color:var(--mut)}
-.lane2-score b{color:var(--ink)}
-.lane-tally{font-size:16px;margin-top:8px}
-.lane-tally .bad{color:var(--red)}
-.lane-tally .good{color:var(--green)}
-.runs-label{font-size:14px;color:var(--mut)}
-.runs-label input{width:58px;font:inherit;background:var(--panel);color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:8px 10px;margin-left:6px}
-
 /* under the hood (demoted) */
 .hood{margin:26px 0 10px;border:1px solid var(--line);border-radius:12px;background:#0c1018}
 .hood>summary{cursor:pointer;padding:16px 18px;font-size:15px;color:var(--ink);font-weight:600;list-style:none}
@@ -243,6 +221,6 @@ footer{border-top:1px solid var(--line);color:var(--mut);font-size:12px;padding:
 .hood-body h3{font-size:14px;margin:18px 0 6px}
 
 @media(max-width:760px){
-  .lanes,.guarantee,.cards,.lanes2{grid-template-columns:1fr}
+  .lanes,.guarantee,.cards{grid-template-columns:1fr}
   .track{padding-left:60px;gap:24px}
 }
