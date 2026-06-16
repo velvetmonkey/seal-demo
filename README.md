@@ -18,13 +18,17 @@ A public demo must not run a live frontier model (cost, abuse, nondeterminism, a
 
 The AI was always just the narrative wrapper. The kernel is the substance, and the substance is the AI-free part.
 
-## Demos (v1 — all three built, real verdicts)
+## The Gauntlet (`public/index.html`)
 
-1. **The determinism differential** (`public/demo1.html`). Same attack, three gates — raw model, an ML guardrail, seal — fired ten times. The probabilistic gates flicker. seal returns the same verdict and the same cert hash every run.
-2. **Live policy swap** (`public/demo2.html`). The same approved payment. Add a 2-of-3 quorum rule and the identical call flips ALLOW → DENY. Safety still allows it; consensus now vetoes. A verified policy *compiler*, not a hand-proven wall.
-3. **The confident hallucination** (`public/demo3.html`). The agent isn't evil, it's plausibly wrong: a non-convergent `assign` on a replicated store. Safety and temporal allow it; only the convergence kernel (grounded in `crdt-lean`) catches it.
+One guided page. You watch a single tool call get **judged gate by gate**, instead of reading a verdict table. The call travels through the gating kernels in series; each gate stamps it ALLOW (green, with the real one-line reason) and passes it on, or slams it DENY (red, with the reason) and destroys it on the spot. Clear every gate and the call leaves as a sealed certificate showing its real cert hash. The page folds the old three demos into one stage show:
 
-Every verdict on every page is **real**, computed live by the verified `seal-host` kernel (WASM in the browser, or the native binary in Docker). `fixtures/captured.json` is the conformance fixture both engines are checked against.
+1. **The Gauntlet + determinism.** Pick a call, send it, watch it run the gates. Re-run it: the path is the same and the certificate locks to the **same hash every time** — proof that does not flicker.
+2. **The policy flip.** The same approved payment. Add one 2-of-3 quorum rule and re-run: the call that sailed through now visibly walls at the consensus gate. Safety still allows it; consensus now vetoes. A verified policy *compiler*, not a hand-proven wall.
+3. **Probability leaks, proof holds.** The same attack dropped into three lanes at once — a raw model and an ML guardrail (illustrative, labelled) leak; seal's lane (the real kernel) blocks every run.
+
+The plumbing (WASM-vs-native, conformance, the TCB) lives in one collapsible **Under the hood** panel, off the hero path. The interactive **Live console** (`public/live.html`) lets you fire your own tool calls at the real binary.
+
+Every verdict in seal's gates and lane is **real**, computed live by the verified `seal-host` kernel (WASM in the browser, or the native binary in Docker). `fixtures/captured.json` is the conformance fixture both engines are checked against.
 
 ## Run it
 
@@ -40,8 +44,8 @@ the static files (the `.wasm` needs an HTTP origin — `file://` won't fetch it)
 cd public && python3 -m http.server 8080      # then open http://localhost:8080/
 ```
 
-All three demos and the Live console (`/live.html`) compute real verdicts via
-`public/wasm/seal.{js,wasm}` at the `sealEvaluate` seam — including the
+The Gauntlet (`/`) and the Live console (`/live.html`) compute real verdicts via
+`public/wasm/seal.{js,wasm}` at the decision seam — including the
 "fire your own tool call" box (audience-typed calls decided live).
 
 ### Target B — native binary behind /api/decide (Docker live)
@@ -91,7 +95,7 @@ This repo is **private pre-award**. The `seal-host` kernels carry an ARIA Track 
 ## Status
 
 **v2 complete — live verdicts on both targets:**
-- **WASM in-browser** (`public/`, `public/wasm/seal.{js,wasm}`): all three demos + the Live console + the "fire your own tool call" box compute real verdicts from the verified kernel, in the browser, no backend. The determinism demo runs 10 genuine WASM decisions per fire.
+- **WASM in-browser** (`public/`, `public/wasm/seal.{js,wasm}`): the Gauntlet + the Live console + the "fire your own tool call" box compute real verdicts from the verified kernel, in the browser, no backend. The three-lane contrast runs genuine WASM decisions per fire for seal's lane; the re-run lock proves determinism live.
 - **Native** (`/live.html`, `Dockerfile.live`): the real `seal-host` binary decides behind `/api/decide`; the Live console prefers it and falls back to WASM.
 - **Conformance-gated:** WASM verdict == native verdict == `fixtures/captured.json` for every demo scenario, cert hashes included (`seal-host/wasm-spike/demo_conformance.mjs`, 7/7; kernel-level 25/25).
 

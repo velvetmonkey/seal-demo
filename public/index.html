@@ -3,52 +3,95 @@
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title>seal · the boundary is a theorem</title>
+<title>seal · the gauntlet</title>
 <link rel="stylesheet" href="style.css"/>
 </head>
 <body>
 <nav class="nav">
   <span class="brand">seal <span>· the boundary is a theorem</span></span>
-  <a href="index.html" class="here">Home</a>
-  <a href="demo1.html">1 · Determinism</a>
-  <a href="demo2.html">2 · Policy swap</a>
-  <a href="demo3.html">3 · Confident hallucination</a>
+  <a href="index.html" class="here">The Gauntlet</a>
   <a href="live.html">▶ Live console</a>
+  <a href="#hood">Under the hood</a>
 </nav>
+
 <div class="wrap">
-  <h1>seal <span>— a verified policy decision point for AI agents</span></h1>
-  <p class="lede">seal sits between an autonomous agent and its tools. Every tool call passes through a decision procedure proven correct in Lean 4. The model can be jailbroken, confused, or confidently wrong. The boundary holds anyway, because it is a theorem, and theorems do not get jailbroken.</p>
+  <h1>The Gauntlet</h1>
+  <p class="lede">Watch one tool call get <b>judged</b>. It travels through the gates the verified kernel sets in its path. Every gate either stamps it <span class="ink-allow">ALLOW</span> and passes it on, or slams it <span class="ink-deny">DENY</span> and destroys it on the spot. Clear every gate and it leaves as a sealed certificate. Nothing here is faked — the verdicts, the reasons, the cert are the real kernel deciding, live.</p>
 
-  <div class="soundbite">Everyone else is making the model safer. seal makes the model irrelevant to safety.</div>
-  <p class="sub">Want to watch the kernel actually decide? Open the <a href="live.html">▶ Live console</a> (live container only) and fire your own tool calls at the real verified binary.</p>
+  <!-- ───────────── STAGE A · THE GAUNTLET ───────────── -->
+  <section class="stage">
+    <div class="picker" id="picker"></div>
+    <div class="call-banner" id="call-banner"></div>
 
-  <h2>Three demonstrations</h2>
-  <p class="sub">Every verdict below is real, captured from the verified <code>seal-host</code> running its seven Lean kernels. No live model: attacks are filmed offline once, the kernel decides live and deterministic.</p>
-  <div class="cards">
-    <a class="card" href="demo1.html">
-      <div class="n">Demo 1</div><h3>The determinism differential</h3>
-      <p>Same attack, three gates, ten runs. A raw model and an ML guardrail flicker. seal returns the same proof every time.</p>
-    </a>
-    <a class="card" href="demo2.html">
-      <div class="n">Demo 2</div><h3>Live policy swap</h3>
-      <p>Add one rule to the spec, re-prove in an instant, and the same payment flips from allowed to blocked. A verified compiler, not a wall.</p>
-    </a>
-    <a class="card" href="demo3.html">
-      <div class="n">Demo 3</div><h3>The confident hallucination</h3>
-      <p>The agent is not evil, it is plausibly wrong. A subtle non-convergent write a human would wave through. The theorem is not fooled.</p>
-    </a>
-  </div>
+    <div class="track-frame">
+      <div class="track" id="track"></div>
+    </div>
 
-  <h2>What is proven, and what is not</h2>
-  <div class="guarantee">
-    <div class="row proven"><div class="k">Proven</div><div class="v">For a canonical action and trusted config, the combined verdict is allow iff every gating kernel allows, by the composition theorem. Axioms: {propext, Classical.choice, Quot.sound} only.</div></div>
-    <div class="row tcb"><div class="k">Trusted (TCB)</div><div class="v">Lean compiler + runtime · host transport routes faithfully (fail-closed) · SealV2 canonical parser · the C ABI / FFI seam</div></div>
-    <div class="row notclaimed"><div class="k">Not claimed</div><div class="v">model safety · classifier completeness · out-of-band effects · anything outside the MCP boundary</div></div>
-  </div>
-  <p class="sub" style="margin-top:14px">The kernel proves the <b>decision</b>, not the whole stack. Naming the trusted base on the page is the point, not a disclaimer: a small, honest, named TCB is the entire premise of safeguarded AI.</p>
+    <div class="run-row">
+      <button class="run-btn" id="run">▶ Send the call</button>
+      <button class="again-btn" id="run-again" disabled>↻ Run again</button>
+      <span class="det" id="det"></span>
+    </div>
+
+    <div class="verdict-out" id="verdict-out"></div>
+    <p class="stage-note sub">Re-run the same call as many times as you like: the path is the same and the certificate locks to the <b>same hash every time</b>. The proof does not flicker.</p>
+  </section>
+
+  <!-- ───────────── STAGE B · THE POLICY FLIP ───────────── -->
+  <section class="stage stage-flip">
+    <h2>The policy flip — same call, one rule, different fate</h2>
+    <p class="sub">Same payment. Don't touch the model. Add <b>one</b> rule to the spec and re-run. The call that sailed through now walls at the consensus gate.</p>
+    <div class="call-banner static"><span class="cb-label">the agent wants to:</span> <code>payments.send { amount: 40000, to: "supplier-77" }</code></div>
+    <div class="flip-controls">
+      <button class="toggle-rule" id="quorum-toggle"></button>
+      <span class="pf-rule sub" id="pf-rule"></span>
+    </div>
+    <div class="track-frame">
+      <div class="track" id="pf-track"></div>
+    </div>
+    <div class="run-row"><button class="run-btn" id="pf-run">▶ Send the payment</button></div>
+    <div class="verdict-out" id="pf-out"></div>
+  </section>
+
+  <!-- ───────────── STAGE C · THREE-LANE CONTRAST ───────────── -->
+  <section class="stage stage-lanes">
+    <h2>Probability leaks. Proof holds.</h2>
+    <p class="sub">The same attack — <code>wire £40,000</code> — dropped into three gates at once, over and over. The first two are illustrative. seal's lane is the <b>real kernel</b>.</p>
+    <div class="lanes2" id="lanes"></div>
+    <div class="run-row">
+      <label class="runs-label">runs <input id="lane-n" type="number" value="12" min="1" max="40"/></label>
+      <button class="run-btn" id="lane-run">▶ Drop the attack ×N</button>
+    </div>
+    <div class="lane-tally" id="lane-tally"></div>
+  </section>
+
+  <!-- ───────────── UNDER THE HOOD (demoted) ───────────── -->
+  <details class="hood" id="hood">
+    <summary>Under the hood — how the verdict is computed, and what is (and isn't) proven</summary>
+    <div class="hood-body">
+      <p class="sub">The main stage shows you the decision. Here is the machinery behind it — deliberately kept off the hero path.</p>
+
+      <h3>Two engines, one verdict</h3>
+      <p class="sub">With the Docker container up, your call goes over MCP stdio into the actual native <code>seal-host</code> binary (<code>POST /api/decide</code>). With no backend, the same verified kernel compiled to <b>WebAssembly</b> decides right here in your browser. No replay, no model. Both engines are <b>conformance-gated</b> to return identical certs — the animation is the same either way, which is why we never show you which one ran.</p>
+
+      <h3>What is proven, trusted, and not claimed</h3>
+      <div class="guarantee">
+        <div class="row proven"><div class="k">Proven</div><div class="v">For a canonical action and trusted config, the combined verdict is allow iff every gating kernel allows, by the composition theorem. Axioms: {propext, Classical.choice, Quot.sound} only.</div></div>
+        <div class="row tcb"><div class="k">Trusted (TCB)</div><div class="v">Lean compiler + runtime · host transport routes faithfully (fail-closed) · SealV2 canonical parser · the C ABI / FFI seam</div></div>
+        <div class="row notclaimed"><div class="k">Not claimed</div><div class="v">model safety · classifier completeness · out-of-band effects · anything outside the MCP boundary</div></div>
+      </div>
+      <p class="sub" style="margin-top:14px">Seven Lean 4 kernels gate the boundary: safety, temporal, consensus, convergence, calibration, linear, budget. A call only activates the gates its config invokes — those are the gates you see on the track. Naming the trusted base is the point, not a disclaimer: a small, honest, named TCB is the entire premise of safeguarded AI.</p>
+
+      <p class="sub" style="margin-top:14px">Want to fire your own tool call at the real binary? Open the <a href="live.html">▶ Live console</a>.</p>
+    </div>
+  </details>
 </div>
+
 <footer>
-  Built on the verified <code>seal-host</code> (7 Lean 4 kernels: safety, temporal, consensus, convergence, calibration, linear, budget). Spec layer is open; proof sources and implementation are held under the pre-award publication boundary. This is a demonstration, not the source.
+  Real verdicts from the verified <code>seal-host</code> (7 Lean 4 kernels) — native binary over <code>POST /api/decide</code> (Docker), or the same kernel as in-browser WebAssembly (no backend). The model never runs; you supply the tool call, the proven decision procedure judges it. Spec layer is open; proof sources are held under the pre-award publication boundary. This is a demonstration, not the source.
 </footer>
+
+<script src="wasm/seal.js"></script>
+<script type="module" src="gauntlet.js"></script>
 </body>
 </html>
