@@ -91,7 +91,7 @@ footer{border-top:1px solid var(--line);color:var(--mut);font-size:12px;padding:
 .cb-label{color:var(--mut);font-size:13px;margin-right:8px}
 
 /* the track */
-.track-frame{overflow-x:auto;padding:6px 0 4px}
+.track-frame{overflow-x:auto;overflow-y:hidden;padding:6px 0 4px}
 .track{position:relative;display:flex;align-items:flex-start;gap:34px;min-height:380px;padding:18px 8px 18px 120px}
 
 /* a gate */
@@ -217,7 +217,7 @@ footer{border-top:1px solid var(--line);color:var(--mut);font-size:12px;padding:
 .seg-btn:hover{color:var(--ink)}
 .seg-btn.on{background:#12233f;border-color:var(--accent);color:var(--ink);font-weight:700}
 .lab-stage{min-width:0}
-.lab-track{min-height:344px}
+.lab-track{min-height:344px;padding-left:8px}
 .lab-causal{font-size:18px;margin:6px 0 4px;min-height:26px;color:var(--ink)}
 .cz{font-weight:900;letter-spacing:.03em}
 .cz.deny{color:var(--red)}

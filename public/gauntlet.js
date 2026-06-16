@@ -143,9 +143,23 @@ async function runGauntlet(trackEl, outEl, scenarioKey) {
   // align the token to the gate's ARCH (the visual doorway), not the whole column, so it
   // stays centred on the gate even though the rule caption makes the column taller.
   const visual = (g) => (g.querySelector && g.querySelector(".gate-arch")) || g;
-  const midY = (el) => el.offsetTop + el.offsetHeight / 2 - token.offsetHeight / 2;
-  const centerX = (el) => el.offsetLeft + el.offsetWidth / 2 - tw / 2;
-  const move = (g) => { const el = visual(g); token.style.transform = `translate(${centerX(el)}px, ${midY(el)}px)`; };
+  // The token is absolutely positioned inside the track, but a gate-arch sits in a
+  // position:relative gate column, so its own offsetLeft/Top are gate-relative — not
+  // track-relative. Accumulate up the offsetParent chain to the track so every gate's
+  // arch resolves to a real track coordinate (without this the X never advances and the
+  // token only drops onto gate 0, never travelling across).
+  const offsetIn = (el) => { let x = 0, y = 0; for (let n = el; n && n !== trackEl; n = n.offsetParent) { x += n.offsetLeft; y += n.offsetTop; } return { x, y }; };
+  const midY = (el) => offsetIn(el).y + el.offsetHeight / 2 - token.offsetHeight / 2;
+  const centerX = (el) => offsetIn(el).x + el.offsetWidth / 2 - tw / 2;
+  // also expose the live x/y as CSS vars so the DENY shatter (@keyframes shatter) explodes the
+  // token IN PLACE at the denying gate, not back at translate(0,0)/start.
+  const move = (g) => {
+    const el = visual(g);
+    const x = centerX(el), y = midY(el);
+    token.style.setProperty("--x", `${x}px`);
+    token.style.setProperty("--y", `${y}px`);
+    token.style.transform = `translate(${x}px, ${y}px)`;
+  };
 
   // park token at the start (left of gate 0)
   token.style.transform = `translate(0px, ${midY(visual(gates[0] || finish))}px)`;
