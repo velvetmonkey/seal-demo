@@ -48,26 +48,6 @@ function renderEquation(eqEl, certs, verdict) {
 
 function certVector(res) { return JSON.stringify((res.certs || []).map((c) => c.certHash)); }
 
-// a decided track (gates in final state + seal slot), pulsing any gate whose verdict flipped.
-function renderTrackStatic(trackEl, res, config, tool, prevCerts) {
-  const certs = res.certs || [];
-  const denyIdx = certs.findIndex((c) => c.verdict === "deny");
-  trackEl.innerHTML = "";
-  certs.forEach((c, i) => {
-    const prev = prevCerts && prevCerts.find((p) => p.kernel === c.kernel);
-    const changed = !!prev && prev.verdict !== c.verdict;
-    const g = document.createElement("div");
-    g.className = "gate " + (c.verdict === "deny" ? "deny" : "allow") + (changed ? " changed" : "");
-    g.innerHTML = gateMarkup(c.kernel, config, tool, c);
-    if (denyIdx >= 0 && i > denyIdx) g.classList.add("unreached");
-    trackEl.appendChild(g);
-  });
-  const finish = document.createElement("div");
-  finish.className = "finish" + (denyIdx < 0 ? " sealed" : "");
-  finish.innerHTML = `<span class="finish-ico">✦</span><span class="finish-label">SEAL</span>`;
-  trackEl.appendChild(finish);
-}
-
 // ──────────────────────────────────────────── THE ONE STAGE ────────────────────────────────────
 (() => {
   const rail = document.getElementById("rail");
@@ -174,17 +154,6 @@ function renderTrackStatic(trackEl, res, config, tool, prevCerts) {
     renderVerdict(res, composed); updateDet(res, composed); prevCerts = certs;
   }
 
-  // FAST re-certify — knob tweak: re-decide, re-stamp the gates in place, pulse the flipped one(s),
-  // refresh equation + verdict. No token travel, so dragging through knobs stays responsive.
-  async function fastRun(composed) {
-    const my = ++runToken;
-    let res; try { res = await decideComposed(composed); } catch (e) { return showStageError(verdict, e); }
-    if (my !== runToken) return;
-    renderTrackStatic(track, res, composed.config, composed.tool, prevCerts);
-    renderEquation(eq, res.certs || [], res.verdict);
-    renderVerdict(res, composed); updateDet(res, composed); prevCerts = res.certs || [];
-  }
-
   // ── controls
   function seg(label, sub, opts, cur, onChange, disabled) {
     const wrap = document.createElement("div");
@@ -195,9 +164,11 @@ function renderTrackStatic(trackEl, res, config, tool, prevCerts) {
     wrap.appendChild(s); return wrap;
   }
 
+  // every knob/preset change replays the full token animation. Debounce so dragging through the
+  // sign-offs (0→1→2→3) fires one run after it settles; the runToken aborts any in-flight run.
   let debounce = null;
-  function onKnob() { clearTimeout(debounce); const c = compose(); banner.innerHTML = `<span class="cb-label">the agent wants to run</span><code>${callString(c)}</code>`; debounce = setTimeout(() => fastRun(c), 170); }
-  function onCall() { const c = compose(); banner.innerHTML = `<span class="cb-label">the agent wants to run</span><code>${callString(c)}</code>`; animateRun(c); }
+  function onKnob() { clearTimeout(debounce); const c = compose(); banner.innerHTML = `<span class="cb-label">the agent wants to run</span><code>${callString(c)}</code>`; debounce = setTimeout(() => animateRun(c), 150); }
+  function onCall() { clearTimeout(debounce); const c = compose(); banner.innerHTML = `<span class="cb-label">the agent wants to run</span><code>${callString(c)}</code>`; animateRun(c); }
 
   function renderRail() {
     rail.innerHTML = "";
