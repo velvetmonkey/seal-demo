@@ -12,7 +12,7 @@ code{background:#0b0e14;border:1px solid var(--line);padding:1px 5px;border-radi
 .nav .brand span{color:var(--mut);font-weight:400}
 .nav a{color:var(--mut)}
 .nav a.here{color:var(--ink)}
-.wrap{max-width:1040px;margin:0 auto;padding:30px 22px}
+.wrap{max-width:95%;margin:0 auto;padding:30px 22px}
 h1{font-size:26px;margin:0 0 6px}
 h1 span{color:var(--mut);font-weight:400}
 h2{font-size:16px;margin:26px 0 10px}
