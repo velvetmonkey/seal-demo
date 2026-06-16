@@ -4,10 +4,11 @@
 // stamp, reason and cert hash comes from the verified kernel via the seam below
 // (decideScenario / POST /api/decide) — never faked. The illustrative raw/ML lanes in
 // the three-lane contrast are RNG and labelled as such. No kernel source here.
-import { decideScenario, ready } from "./seal-wasm.js";
-// read-only: the real trusted-config payloads each scenario is judged under, so each
-// gate can show the actual rule it enforces (never modified here — just read).
-import { SCENARIOS } from "./seal-config.js";
+import { decideScenario, decideConfig, ready } from "./seal-wasm.js";
+// read-only: the real trusted-config payloads each scenario is judged under (so each
+// gate shows the actual rule it enforces), plus stableHash to compute real approval
+// targets for the Policy Lab. Never modified here — composed into new config objects.
+import { SCENARIOS, stableHash } from "./seal-config.js";
 
 // ── the seam: native verified binary first (POST /api/decide, Docker live), else the
 // same kernel compiled to WASM in-browser. Same schema both ways, so the animation is
@@ -209,6 +210,42 @@ async function runGauntlet(trackEl, outEl, scenarioKey) {
 // determinism bookkeeping: the full cert-hash vector must lock identical every run.
 function certVector(res) { return JSON.stringify((res.certs || []).map((c) => c.certHash)); }
 
+// Build a single gate in its FINAL decided state (no token animation) — used by the
+// Policy Lab, which re-decides live on every knob change. Same dual-register markup as
+// the hero gates. `changed` pulses the gate when its verdict flipped vs the last decide.
+function buildGateStatic(c, config, tool, changed) {
+  const g = document.createElement("div");
+  g.className = "gate " + (c.verdict === "deny" ? "deny" : "allow") + (changed ? " changed" : "");
+  const rule = gatePolicy(c.kernel, config, tool);
+  const isId = /^\d+$/.test(c.reason);
+  g.innerHTML =
+    `<div class="gate-head"><span class="gate-name">${kname(c.kernel)}</span><span class="gate-sub">${ksub(c.kernel)}</span></div>` +
+    `<div class="gate-stake">${kstake(c.kernel)}</div>` +
+    (rule ? `<div class="gate-policy"><span class="gp-label">RULE</span><span class="gp-text">${rule}</span></div>` : `<div class="gate-policy"></div>`) +
+    `<div class="gate-arch"><span class="door l"></span><span class="door r"></span><span class="gate-stamp">${c.verdict === "deny" ? "DENY" : "ALLOW"}</span></div>` +
+    `<div class="gate-reason${isId ? " idval" : ""}">${c.reason}</div><div class="gate-hash">cert ${c.certHash}</div>`;
+  return g;
+}
+
+// Render a whole decided track statically (gates in final state + a finish/seal slot),
+// pulsing any gate whose verdict changed vs the previous decision (prevCerts).
+function renderLabTrack(trackEl, res, config, tool, prevCerts) {
+  const certs = res.certs || [];
+  const denyIdx = certs.findIndex((c) => c.verdict === "deny");
+  trackEl.innerHTML = "";
+  certs.forEach((c, i) => {
+    const prev = prevCerts && prevCerts.find((p) => p.kernel === c.kernel);
+    const changed = !!prev && prev.verdict !== c.verdict;
+    const g = buildGateStatic(c, config, tool, changed);
+    if (denyIdx >= 0 && i > denyIdx) g.classList.add("unreached");
+    trackEl.appendChild(g);
+  });
+  const finish = document.createElement("div");
+  finish.className = "finish" + (denyIdx < 0 ? " sealed" : "");
+  finish.innerHTML = `<span class="finish-ico">✦</span><span class="finish-label">SEAL</span>`;
+  trackEl.appendChild(finish);
+}
+
 // ───────────────────────────────────────────── HERO STAGE ─────────────────────────
 const hero = (() => {
   const picker = document.getElementById("picker");
@@ -274,36 +311,161 @@ const hero = (() => {
   return { getSelected: () => selected };
 })();
 
-// ──────────────────────────────────────── POLICY-FLIP STAGE ───────────────────────
+// ──────────────────────────────────────── THE POLICY LAB ──────────────────────────
+// A bounded console on ONE fixed call. Each knob maps to a REAL edit of the trusted
+// config / approvals / votes; the verified kernel re-decides live on every change
+// (decideConfig reuses the warm module). The config-diff is DERIVED from the actual
+// objects fed to the kernel — never a hardcoded string.
 (() => {
-  const toggle = document.getElementById("quorum-toggle");
-  const track = document.getElementById("pf-track");
-  const out = document.getElementById("pf-out");
-  const runBtn = document.getElementById("pf-run");
-  const ruleEl = document.getElementById("pf-rule");
-  if (!toggle) return;
+  const rail = document.getElementById("lab-rail");
+  const banner = document.getElementById("lab-banner");
+  const track = document.getElementById("lab-track");
+  const causalEl = document.getElementById("lab-causal");
+  const diffEl = document.getElementById("lab-diff");
+  if (!rail) return;
 
-  let quorumOn = false, busy = false;
-  const scenario = () => (quorumOn ? "pay-after" : "pay-before");
+  // real config bases, reused (never mutated) from the verified scenarios
+  const PAY_BASE = SCENARIOS["pay-before"].config;                 // safety+temporal, no consensus
+  const PAY_CONSENSUS = SCENARIOS["pay-after"].config.consensus;   // the 2-of-3 quorum rule
+  const PAY_APPROVALS = SCENARIOS["pay-before"].approvals;         // [PAY_T]
+  const DB_BASE = SCENARIOS["destructive-sql"].config;
+  const STORE_BASE = SCENARIOS["store-safe"].config;
+  const STORE_APPROVALS = SCENARIOS["store-safe"].approvals;       // [STORE_T]
 
-  function paint() {
-    toggle.classList.toggle("on", quorumOn);
-    toggle.textContent = quorumOn ? "✓ 2-of-3 quorum rule ADDED — remove it" : "+ Add the 2-of-3 quorum rule";
-    ruleEl.innerHTML = quorumOn
-      ? `<code>consensus.high_stakes = [ "payments.send" ]</code> <span class="sub">— the one new rule</span>`
-      : `<code>consensus.high_stakes = [ ]</code> <span class="sub">— no quorum rule</span>`;
-    track.innerHTML = ""; out.innerHTML = ""; out.className = "verdict-out";
+  const state = { call: "pay", approval: true, quorum: false, signoffs: 0, sql: "drop", op: "assign" };
+
+  // build NDJSON votes text for N acceptors casting `value` — rebuilt from scratch each
+  // change (acceptor ids 1..N), never appended. (Used by the M5 sign-offs stepper.)
+  function votesText(n, value) {
+    let s = "";
+    for (let i = 1; i <= n; i++) s += JSON.stringify({ acceptor: i, value }) + "\n";
+    return s;
   }
 
-  toggle.addEventListener("click", () => { if (!busy) { quorumOn = !quorumOn; paint(); } });
-  runBtn.addEventListener("click", async () => {
-    if (busy) return;
-    busy = true; runBtn.disabled = true; toggle.disabled = true;
-    try { await runGauntlet(track, out, scenario()); }
-    catch (e) { showStageError(out, e); }
-    finally { busy = false; runBtn.disabled = false; toggle.disabled = false; }
-  });
-  paint();
+  // compose the REAL {config, tool, args, approvals, votes} from the current knobs
+  function compose() {
+    if (state.call === "pay") {
+      const config = state.quorum ? { ...PAY_BASE, consensus: PAY_CONSENSUS } : { ...PAY_BASE };
+      return { config, tool: "payments.send", args: { amount: 40000, to: "supplier-77" },
+               approvals: state.approval ? PAY_APPROVALS : [],
+               votes: state.quorum ? votesText(state.signoffs, "payments.send") : "" };
+    }
+    if (state.call === "db") {
+      const sql = state.sql === "drop" ? "drop table users" : "select count(*) from users";
+      return { config: DB_BASE, tool: "db.execute", args: { database: "prod", sql },
+               approvals: state.approval ? [stableHash(["db", "prod", "write", sql])] : [], votes: "" };
+    }
+    return { config: STORE_BASE, tool: "store.update", args: { op: state.op, key: "k1" },
+             approvals: state.approval ? STORE_APPROVALS : [], votes: "" };
+  }
+
+  const callString = (c) => `${c.tool} ${JSON.stringify(c.args).replace(/"([^"]+)":/g, "$1: ")}`;
+
+  // a derived "shape" of the composed input — the diff compares two shapes, so the
+  // mirror always reflects what was actually fed to the kernel (flag 1).
+  function shape(c) {
+    return {
+      "consensus.high_stakes": c.config.consensus ? JSON.stringify(c.config.consensus.high_stakes) : "(no consensus rule)",
+      "approvals": c.approvals.length ? `[${c.approvals.map(String).join(", ")}]` : "[ ]",
+      "args": JSON.stringify(c.args),
+      "votes": c.votes ? c.votes.trim().split("\n").filter(Boolean) : [],
+    };
+  }
+  function diffRows(prev, cur) {
+    const a = shape(prev), b = shape(cur), rows = [];
+    for (const k of ["consensus.high_stakes", "approvals", "args"]) {
+      if (a[k] !== b[k]) rows.push({ k, a: a[k], b: b[k] });
+    }
+    // votes: show the REAL line delta, not a count (flag D)
+    const av = a.votes, bv = b.votes;
+    if (JSON.stringify(av) !== JSON.stringify(bv)) {
+      const added = bv.filter((l) => !av.includes(l)), removed = av.filter((l) => !bv.includes(l));
+      const parts = [].concat(added.map((l) => "+ " + l), removed.map((l) => "− " + l));
+      rows.push({ k: "votes", a: `${av.length} sign-off(s)`, b: `${bv.length} sign-off(s)`, delta: parts });
+    }
+    return rows;
+  }
+
+  function causal(res) {
+    if (res.verdict === "DENY") {
+      const d = (res.certs || []).find((c) => c.verdict === "deny") || {};
+      return `<span class="cz deny">DENY</span> at the <b>${kname(res.deny_kernel)} gate</b> — <span class="cz-reason">${d.reason || res.reason}</span>`;
+    }
+    return `<span class="cz allow">ALLOW</span> — every gate's rule is met · <span class="cz-cert">cert ${res.certHash}</span>`;
+  }
+
+  function seg(label, sub, opts, cur, onChange, disabled) {
+    const wrap = document.createElement("div");
+    wrap.className = "lab-ctrl" + (disabled ? " disabled" : "");
+    wrap.innerHTML = `<div class="lc-label">${label}</div><div class="lc-sub">${sub}</div>`;
+    const s = document.createElement("div");
+    s.className = "seg";
+    opts.forEach((o) => {
+      const b = document.createElement("button");
+      b.className = "seg-btn" + (o.val === cur ? " on" : "");
+      b.textContent = o.text;
+      if (!disabled) b.addEventListener("click", () => onChange(o.val));
+      s.appendChild(b);
+    });
+    wrap.appendChild(s);
+    return wrap;
+  }
+
+  function renderRail() {
+    rail.innerHTML = "";
+    rail.appendChild(seg("The call", "what the agent attempts",
+      [{ val: "pay", text: "Pay £40k" }, { val: "db", text: "Database" }, { val: "store", text: "Store write" }],
+      state.call, (v) => { state.call = v; renderRail(); update(); }));
+    rail.appendChild(seg("Human approval", "→ Safety gate",
+      [{ val: true, text: "Attached" }, { val: false, text: "Missing" }],
+      state.approval, (v) => { state.approval = v; renderRail(); update(); }));
+    if (state.call === "pay") {
+      rail.appendChild(seg("Quorum rule", "→ Consensus gate",
+        [{ val: false, text: "Off" }, { val: true, text: "2-of-3 required" }],
+        state.quorum, (v) => { state.quorum = v; renderRail(); update(); }));
+      rail.appendChild(seg("Sign-offs", state.quorum ? "verified quorum agreement" : "(turn quorum on)",
+        [0, 1, 2, 3].map((n) => ({ val: n, text: String(n) })),
+        state.signoffs, (v) => { state.signoffs = v; renderRail(); update(); }, !state.quorum));
+    } else if (state.call === "db") {
+      rail.appendChild(seg("SQL payload", "→ Safety gate match",
+        [{ val: "drop", text: "drop table" }, { val: "safe", text: "select" }],
+        state.sql, (v) => { state.sql = v; renderRail(); update(); }));
+    } else {
+      rail.appendChild(seg("Store op", "→ Convergence gate",
+        [{ val: "assign", text: "assign (LWW)" }, { val: "orset.add", text: "orset.add" }],
+        state.op, (v) => { state.op = v; renderRail(); update(); }));
+    }
+  }
+
+  let prevRes = null, prevCompose = null, seq = 0;
+  async function update() {
+    const cur = compose();
+    const my = ++seq;
+    banner.innerHTML = `<span class="cb-label">the agent wants to:</span> <code>${callString(cur)}</code>`;
+    causalEl.innerHTML = `<span class="sub">deciding…</span>`;
+    let res;
+    try {
+      res = await decideConfig(cur.config, { tool: cur.tool, args: cur.args, approvals: cur.approvals, votes: cur.votes });
+    } catch (e) {
+      if (my === seq) causalEl.innerHTML = `<span class="cz deny">ENGINE ERROR</span> ${(e && e.message) || e}`;
+      return;
+    }
+    if (my !== seq) return; // a newer change superseded this decide
+    renderLabTrack(track, res, cur.config, cur.tool, prevRes && prevRes.certs);
+    causalEl.innerHTML = causal(res);
+    if (prevCompose) {
+      const rows = diffRows(prevCompose, cur);
+      diffEl.innerHTML = rows.length
+        ? `<div class="ld-label">live edit to the trusted config the kernel read</div>` +
+          rows.map((r) => `<div class="ld-row"><span class="ld-k">${r.k}</span><span class="ld-a">${r.a}</span><span class="ld-arrow">→</span><span class="ld-b">${r.b}</span>` +
+            (r.delta ? `<div class="ld-delta">${r.delta.join("<br>")}</div>` : "") + `</div>`).join("")
+        : "";
+    }
+    prevRes = res; prevCompose = cur;
+  }
+
+  renderRail();
+  update();
 })();
 
 // (The three-lane contrast was cut: two of its lanes were illustrative RNG, and

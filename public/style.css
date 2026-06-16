@@ -203,13 +203,39 @@ footer{border-top:1px solid var(--line);color:var(--mut);font-size:12px;padding:
 .seal-vector{display:flex;flex-wrap:wrap;gap:6px 18px;margin-top:10px}
 .seal-vector span{font-family:ui-monospace,monospace;font-size:11px;color:#7c8aa3}
 
-/* policy flip */
-.flip-controls{display:flex;align-items:center;gap:14px;margin:6px 0 8px;flex-wrap:wrap}
-.toggle-rule{font:inherit;cursor:pointer;background:var(--panel);color:var(--ink);border:1px solid var(--accent);
-  border-radius:11px;padding:12px 18px;font-size:15px;font-weight:600}
-.toggle-rule.on{background:#12233f;border-color:var(--green);color:var(--green)}
-.pf-rule code{font-size:13px}
-.call-banner.static{margin-bottom:8px}
+/* ── the Policy Lab ── */
+.lab{display:grid;grid-template-columns:300px 1fr;gap:20px;align-items:start;margin-top:8px}
+.lab-rail{display:flex;flex-direction:column;gap:14px}
+.lab-ctrl{background:#0a0f17;border:1px solid var(--line);border-radius:10px;padding:12px 14px}
+.lab-ctrl.disabled{opacity:.45}
+.lc-label{font-size:14px;font-weight:700;color:var(--ink)}
+.lc-sub{font-size:11px;color:var(--accent);margin-bottom:8px;opacity:.85}
+.seg{display:flex;gap:6px;flex-wrap:wrap}
+.seg-btn{flex:1 1 auto;min-width:54px;font:inherit;font-size:13px;cursor:pointer;background:var(--panel);
+  color:var(--mut);border:1px solid var(--line);border-radius:8px;padding:9px 10px;transition:all .12s}
+.lab-ctrl.disabled .seg-btn{cursor:default}
+.seg-btn:hover{color:var(--ink)}
+.seg-btn.on{background:#12233f;border-color:var(--accent);color:var(--ink);font-weight:700}
+.lab-stage{min-width:0}
+.lab-track{min-height:344px}
+.lab-causal{font-size:18px;margin:6px 0 4px;min-height:26px;color:var(--ink)}
+.cz{font-weight:900;letter-spacing:.03em}
+.cz.deny{color:var(--red)}
+.cz.allow{color:var(--green)}
+.cz-reason{color:#ffc7c7}
+.lab-causal .cz-cert{font-family:ui-monospace,monospace;font-size:13px;color:#52607a}
+.lab-diff{margin-top:8px}
+.ld-label{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--mut);margin-bottom:6px}
+.ld-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-family:ui-monospace,monospace;font-size:12.5px;
+  padding:7px 10px;background:#0a0f17;border:1px solid var(--line);border-left:3px solid var(--accent);border-radius:8px;margin-bottom:6px}
+.ld-k{color:var(--accent)}
+.ld-a{color:#8b6b6b;text-decoration:line-through;opacity:.8}
+.ld-arrow{color:var(--mut)}
+.ld-b{color:var(--green)}
+.ld-delta{flex-basis:100%;color:#9fb0c8;margin-top:4px;white-space:pre-wrap}
+/* a gate whose verdict flipped since the last decide */
+.gate.changed .gate-arch{animation:gatePulse 1.1s ease}
+@keyframes gatePulse{0%,100%{box-shadow:none}30%{box-shadow:0 0 30px 3px rgba(122,162,247,.7)}}
 
 /* under the hood (demoted) */
 .hood{margin:26px 0 10px;border:1px solid var(--line);border-radius:12px;background:#0c1018}
@@ -221,6 +247,6 @@ footer{border-top:1px solid var(--line);color:var(--mut);font-size:12px;padding:
 .hood-body h3{font-size:14px;margin:18px 0 6px}
 
 @media(max-width:760px){
-  .lanes,.guarantee,.cards{grid-template-columns:1fr}
+  .lanes,.guarantee,.cards,.lab{grid-template-columns:1fr}
   .track{padding-left:60px;gap:24px}
 }

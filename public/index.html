@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
 <title>seal · the gauntlet</title>
 <!-- bump ?v= on every push so browsers fetch fresh assets without a hard refresh -->
-<link rel="stylesheet" href="style.css?v=20260616d"/>
+<link rel="stylesheet" href="style.css?v=20260616e"/>
 </head>
 <body>
 <nav class="nav">
@@ -43,20 +43,19 @@
     <p class="stage-note sub">Re-run the same call as many times as you like: the path is the same and the certificate locks to the <b>same hash every time</b>. The proof does not flicker.</p>
   </section>
 
-  <!-- ───────────── STAGE B · THE POLICY FLIP ───────────── -->
-  <section class="stage stage-flip">
-    <h2>The policy flip — same call, one rule, different fate</h2>
-    <p class="sub">Same payment. Don't touch the model. Add <b>one</b> rule to the spec and re-run. The call that sailed through now walls at the consensus gate.</p>
-    <div class="call-banner static"><span class="cb-label">the agent wants to:</span> <code>payments.send { amount: 40000, to: "supplier-77" }</code></div>
-    <div class="flip-controls">
-      <button class="toggle-rule" id="quorum-toggle"></button>
-      <span class="pf-rule sub" id="pf-rule"></span>
+  <!-- ───────────── STAGE B · THE POLICY LAB ───────────── -->
+  <section class="stage stage-lab">
+    <h2>The Policy Lab — change the rules, watch the verdict move</h2>
+    <p class="sub">Same call, every time. Flip a policy knob and the verified kernel re-decides <b>live</b>. Every change is a real edit to the trusted config the kernel reads — shown in the diff below — not a UI trick.</p>
+    <div class="lab">
+      <div class="lab-rail" id="lab-rail"></div>
+      <div class="lab-stage">
+        <div class="call-banner" id="lab-banner"></div>
+        <div class="track-frame"><div class="track lab-track" id="lab-track"></div></div>
+        <div class="lab-causal" id="lab-causal"></div>
+        <div class="lab-diff" id="lab-diff"></div>
+      </div>
     </div>
-    <div class="track-frame">
-      <div class="track" id="pf-track"></div>
-    </div>
-    <div class="run-row"><button class="run-btn" id="pf-run">▶ Send the payment</button></div>
-    <div class="verdict-out" id="pf-out"></div>
   </section>
 
   <!-- ───────────── UNDER THE HOOD (demoted) ───────────── -->
@@ -117,6 +116,6 @@
 })();
 </script>
 <script src="wasm/seal.js"></script>
-<script type="module" src="gauntlet.js?v=20260616d"></script>
+<script type="module" src="gauntlet.js?v=20260616e"></script>
 </body>
 </html>
