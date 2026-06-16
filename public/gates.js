@@ -90,3 +90,45 @@ export function gateTripHint(kernel, config, tool) {
       return "";
   }
 }
+
+// What this gate actually inspects on THIS call — so the rule is never shown without a
+// referent. Pairs with gatePolicy (the rule) and gateResult (the outcome) to render a
+// gate card that is always tied to the specific call.
+export function gateChecks(kernel, config, tool) {
+  switch (kernel) {
+    case "safety":
+      return tool === "approve" ? "the approve call's target" : `the human approval for ${tool}`;
+    case "temporal":
+      return "the event trace";
+    case "consensus":
+      return "the 2-of-3 quorum sign-off";
+    case "convergence": {
+      const t = (config && config.convergence && config.convergence.tools || []).find((x) => x.tool === tool);
+      return t ? `the “${t.op_arg}” operation` : "the replicated-store write";
+    }
+    default:
+      return "the call";
+  }
+}
+
+// A plain one-line outcome for this gate's verdict on this call, translated from the real
+// cert (verdict + machine reason) — names what happened, no kernel jargon.
+export function gateResult(kernel, cert) {
+  const allow = cert.verdict !== "deny";
+  const r = cert.reason || "";
+  switch (kernel) {
+    case "safety":
+      if (allow) return "a valid human approval is attached";
+      if (/flat deny/i.test(r)) return "an agent can’t rubber-stamp its own action";
+      if (/unmatched/i.test(r)) return "no guarded policy matches this call";
+      return "no valid human approval was supplied";
+    case "temporal":
+      return allow ? "the event trace is clean" : "a forbidden sequence appears in the trace";
+    case "consensus":
+      return allow ? "the 2-of-3 quorum signed off" : "the 2-of-3 quorum is missing";
+    case "convergence":
+      return allow ? "a provably-convergent operation" : "a non-convergent op (last-writer-wins)";
+    default:
+      return allow ? "passes" : "blocked";
+  }
+}
