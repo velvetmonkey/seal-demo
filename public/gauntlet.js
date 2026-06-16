@@ -9,6 +9,9 @@ import { decideScenario, decideConfig, ready } from "./seal-wasm.js";
 // gate shows the actual rule it enforces), plus stableHash to compute real approval
 // targets for the Policy Lab. Never modified here — composed into new config objects.
 import { SCENARIOS, stableHash } from "./seal-config.js";
+// shared gate-derivation helpers (also used by the Live console) — one source of truth for
+// kernel names and the RULE each gate enforces, derived from the trusted config.
+import { KERNEL, kname, ksub, kstake, gatePolicy } from "./gates.js";
 
 // ── the seam: native verified binary first (POST /api/decide, Docker live), else the
 // same kernel compiled to WASM in-browser. Same schema both ways, so the animation is
@@ -51,55 +54,8 @@ const CALLS = {
 // scenarios offered in the hero picker (the policy-flip pay-before/after live in their own stage)
 const HERO_KEYS = ["wire-40k", "destructive-sql", "self-approve", "store-subtle", "store-safe"];
 
-// `stake` = the BIG plain-English line (what's at risk / why a human cares); `name`+`sub`
-// the kernel identity. Dual-register: layman reads the stake, techie reads the rule+hash.
-const KERNEL = {
-  safety:      { name: "Safety",      sub: "approval gate",        stake: "Could move money or wreck data — needs a human's say-so." },
-  temporal:    { name: "Temporal",    sub: "trace gate",           stake: "Replayed or out-of-order actions get caught here." },
-  consensus:   { name: "Consensus",   sub: "quorum gate",          stake: "A big action — needs a quorum of people, not one." },
-  convergence: { name: "Convergence", sub: "CRDT gate",            stake: "A write to shared data — must be provably safe to merge." },
-  calibration: { name: "Calibration", sub: "calibration gate",     stake: "The claim must be as confident as the evidence allows." },
-  linear:      { name: "Linear",      sub: "resource gate",        stake: "A one-time resource can't be spent twice." },
-  budget:      { name: "Budget",      sub: "budget gate",          stake: "The action must stay within budget." },
-};
-const kname = (k) => (KERNEL[k] || { name: k }).name;
-const ksub = (k) => (KERNEL[k] || { sub: "gating kernel" }).sub;
-const kstake = (k) => (KERNEL[k] || { stake: "" }).stake;
-
-// Derive the human-readable RULE a gate enforces for THIS call, straight from the real
-// trusted config (SCENARIOS[key].config). Presentation only — it explains the policy the
-// kernel consumes; it never changes a verdict. Returns "" if the config is unavailable.
-function gatePolicy(kernel, config, tool) {
-  if (!config) return "";
-  switch (kernel) {
-    case "safety": {
-      const r = (config.safety && config.safety.tools || []).find((t) => t.name === tool);
-      if (!r) return "guarded tools need a valid human approval";
-      if (r.mode === "deny") return `${tool} is flat-denied — never permitted`;
-      if (r.match && r.match.type === "contains_any_ci")
-        return `needs a human approval when ${r.match.arg} contains “${(r.match.needles || []).join(" / ")}”`;
-      return `${tool} is guarded — needs a valid human approval`;
-    }
-    case "temporal":
-      return (config.temporal && (config.temporal.policies || []).length)
-        ? "the event trace must satisfy the temporal policy"
-        : "the event trace must contain no forbidden sequence";
-    case "consensus": {
-      const c = config.consensus || {};
-      const hs = c.high_stakes || [];
-      if (hs.includes(tool))
-        return `high-stakes — needs a 2-of-3 sign-off (roster ${(c.roster || []).join("/")})`;
-      return "high-stakes tools need a 2-of-3 quorum sign-off";
-    }
-    case "convergence": {
-      const t = (config.convergence && config.convergence.tools || []).find((x) => x.tool === tool);
-      if (t) return `the “${t.op_arg}” op must be a proven-convergent CRDT operation`;
-      return "replicated-store writes must be convergence-safe";
-    }
-    default:
-      return "a verified gating kernel";
-  }
-}
+// (KERNEL metadata, kname/ksub/kstake and gatePolicy now live in ./gates.js — shared with
+// the Live console so both pages describe the gates identically.)
 
 // ── the gate track. Builds gates from the REAL certs array (only the kernels that
 // gated this call), animates one call-token through them in series, stamps each gate

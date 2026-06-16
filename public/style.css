@@ -237,14 +237,30 @@ footer{border-top:1px solid var(--line);color:var(--mut);font-size:12px;padding:
 .gate.changed .gate-arch{animation:gatePulse 1.1s ease}
 @keyframes gatePulse{0%,100%{box-shadow:none}30%{box-shadow:0 0 30px 3px rgba(122,162,247,.7)}}
 
-/* under the hood (demoted) */
-.hood{margin:26px 0 10px;border:1px solid var(--line);border-radius:12px;background:#0c1018}
-.hood>summary{cursor:pointer;padding:16px 18px;font-size:15px;color:var(--ink);font-weight:600;list-style:none}
-.hood>summary::-webkit-details-marker{display:none}
-.hood>summary::before{content:"▸ ";color:var(--accent)}
-.hood[open]>summary::before{content:"▾ "}
-.hood-body{padding:4px 20px 20px}
+/* under the hood (shown inline — no longer an accordion) */
+.hood{margin:26px 0 10px;border:1px solid var(--line);border-radius:12px;background:#0c1018;padding:6px 20px 18px}
+.hood>h2{font-size:16px;margin:16px 0 8px}
 .hood-body h3{font-size:14px;margin:18px 0 6px}
+
+/* ── Live console: "fire your own" guidance (gate map + approval toggle + presets) ── */
+.fire{display:flex;flex-direction:column;gap:12px;margin:14px 0}
+.fire-row{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.fire-tool{display:flex;align-items:center;gap:8px;color:var(--mut);font-size:13px}
+.fire-approval{display:flex;align-items:center;gap:10px}
+.fire-approval .lc-label{font-size:13px;font-weight:600;color:var(--ink)}
+.fire-approval .seg{flex-wrap:nowrap}
+.fire-presets{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.fp-label{font-size:11px;text-transform:uppercase;letter-spacing:.1em;color:var(--mut)}
+.pick:disabled{opacity:.4;cursor:default;pointer-events:none}
+.gatemap{margin:6px 0 2px;border:1px solid var(--line);border-radius:12px;background:#0a0f17;overflow:hidden}
+.gm-head{font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:var(--mut);padding:10px 14px;border-bottom:1px solid var(--line)}
+.gm-head code{background:transparent;border:0;padding:0;color:var(--ink);font-size:13px}
+.gm-row{display:grid;grid-template-columns:130px 1fr;gap:4px 14px;padding:10px 14px;border-bottom:1px solid var(--line)}
+.gm-row:last-child{border-bottom:0}
+.gm-name{font-weight:700;color:var(--ink);font-size:14px}
+.gm-rule{color:#9fb0c8;font-size:13px;line-height:1.35}
+.gm-hint{grid-column:2;color:var(--mut);font-size:12px;line-height:1.35}
+.fire-why{margin:12px 0 2px;font-size:14px;color:var(--ink);line-height:1.4}
 
 @media(max-width:760px){
   .lanes,.guarantee,.cards,.lab{grid-template-columns:1fr}
