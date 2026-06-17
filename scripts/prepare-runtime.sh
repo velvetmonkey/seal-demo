@@ -4,7 +4,7 @@
 # runtime/ is gitignored: the binary is the private pre-award implementation.
 set -euo pipefail
 
-SEAL_HOST="${SEAL_HOST_DIR:-$HOME/build/seal-host}"
+SEAL_HOST="${SEAL_HOST_DIR:-$HOME/src/seal-host}"
 HERE="$(cd "$(dirname "$0")/.." && pwd)"
 BIN="$SEAL_HOST/.lake/build/bin/seal-host"
 MOCK="$SEAL_HOST/test/integration/mock_mcp_server.py"

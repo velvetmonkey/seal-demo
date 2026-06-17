@@ -12,9 +12,9 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
 HOME = Path.home()
-SEAL_BIN = os.environ.get("SEAL_BIN", str(HOME / "build/seal-host/.lake/build/bin/seal-host"))
-MOCK = os.environ.get("SEAL_MOCK", str(HOME / "build/seal-host/test/integration/mock_mcp_server.py"))
-PUBLIC = os.environ.get("SEAL_PUBLIC", str(HOME / "build/seal-demo/public"))
+SEAL_BIN = os.environ.get("SEAL_BIN", str(HOME / "src/seal-host/.lake/build/bin/seal-host"))
+MOCK = os.environ.get("SEAL_MOCK", str(HOME / "src/seal-host/test/integration/mock_mcp_server.py"))
+PUBLIC = os.environ.get("SEAL_PUBLIC", str(HOME / "src/seal-demo/public"))
 PUBKEY = "demo-pk"
 
 

@@ -1,2 +1,5 @@
 # the private seal-host binary lives here for the LIVE image — never commit it
 runtime/
+
+# agent scratch — runtime logs, never source
+.juno_task/
