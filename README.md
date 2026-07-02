@@ -2,8 +2,10 @@
 
 A public-facing, browser-runnable demo of **seal** — a verified **Policy Decision Point (PDP)** that mediates an LLM agent's tool calls. A Lean 4 kernel proves the policy-evaluation logic is sound.
 
-> Everyone else makes the model safer. seal makes the model irrelevant to safety.
-> The boundary is a theorem, and theorems don't get jailbroken.
+> seal proves the *decision*, not the whole stack: for a canonical request and a
+> policy, the verdict is what the theorem says, computed live by the verified
+> kernel. It does not claim the proxy, auth, sandbox, or parser are unbypassable.
+> See "The honest claim" below.
 
 ## Quick start
 
