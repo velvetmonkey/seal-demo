@@ -1,4 +1,12 @@
 seal-demo
 Copyright 2026 Ben Cassie / velvetmonkey
 
+This product includes the compiled seal kernel evaluator (public/wasm/seal.js,
+public/wasm/seal.wasm) — a black-box WebAssembly build of the verified seal
+mediation kernel (sha256
+1cc765c7de2cead88eda2e8e5f5af5a5e070f35a767916e754b873733562c70a). The kernel's
+decision logic is the subject of public Lean 4 proofs. The compiled artifact is
+redistributed here as the public "black-box evaluator"; its source build pipeline
+is not included in this repository.
+
 Licensed under the Apache License, Version 2.0. See LICENSE.

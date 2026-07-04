@@ -35,6 +35,12 @@ That's the whole thing: every verdict is the real verified kernel deciding live 
 
 seal proves the **decision**, not the whole stack. The kernel guarantees: *for this canonical request and this policy, the verdict is DENY, by theorem X.* It does **not** claim the proxy, auth, sandbox, or parser are unbypassable. The demo shows the real guarantee with the Trusted Computing Base named on screen. Honesty is the pitch, not a footnote.
 
+It also does **not** claim the compiled kernel provably equals the Lean model: `public/wasm/seal.wasm` is a *trusted compile* (Lean → C → emscripten) plus differential testing, **not** a proof (the T3 caveat). The in-browser sha256 proves *which binary ran*, never that it matches the model.
+
+**Profile:** the deployed seal host mediates under the `compatible` profile, not strict canonical-l0 (see seal-host CLAIMS.md); the canonical AST is audit input to the kernels, not the mediation gate.
+
+**Terminology:** this page writes **DENY** where the seal family's canonical verdict vocabulary is **BLOCK** — read DENY as BLOCK; the underlying verdict is identical.
+
 ## How it works — AI is filmed, the kernel decides live
 
 A public demo must not run a live frontier model (cost, abuse, nondeterminism, and the night it refuses to misbehave on cue it dies on stage). So:
