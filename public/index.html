@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
 <title>seal · the boundary is a theorem</title>
 <!-- bump ?v= on every push so browsers fetch fresh assets without a hard refresh -->
-<link rel="stylesheet" href="style.css?v=20260616o"/>
+<link rel="stylesheet" href="style.css?v=20260710a"/>
 </head>
 <body class="app">
 
@@ -31,6 +31,14 @@
       <button class="run-btn" id="run">↻ Run the same call again</button>
       <span class="det" id="det"></span>
     </div>
+
+    <!-- Act 3 — after the verdict, the receipt becomes the artifact. Everything in here is
+         self-consistency: this page re-derives its own decision through its own kernel and
+         byte-compares against the receipt. It is not an independent audit. -->
+    <details class="audit" id="audit">
+      <summary>Audit the receipt — the run's evidence, re-checked on this device</summary>
+      <div id="audit-body"></div>
+    </details>
   </section>
 </main>
 
@@ -57,6 +65,6 @@
 })();
 </script>
 <script src="wasm/seal.js"></script>
-<script type="module" src="gauntlet.js?v=20260616o"></script>
+<script type="module" src="gauntlet.js?v=20260710a"></script>
 </body>
 </html>

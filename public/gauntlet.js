@@ -6,6 +6,7 @@
 import { decideConfig, decideSeq, ready } from "./seal-wasm.js";
 import { SCENARIOS, CFG_TEMPORAL, stableHash } from "./seal-config.js";
 import { kname, gatePolicy, gateChecks, gateResult } from "./gates.js";
+import { renderAudit } from "./audit.js";
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 // snappy full-run timings — knob tweaks use the fast path (no travel), so this only plays on a
@@ -60,35 +61,50 @@ function certVector(res) { return JSON.stringify((res.certs || []).map((c) => c.
   const votesText = (n, value) => { let s = ""; for (let i = 1; i <= n; i++) s += JSON.stringify({ acceptor: i, value }) + "\n"; return s; };
 
   // compose the REAL {config, tool, args, approvals, votes} + consequence copy from the knobs
-  function compose() {
-    if (state.call === "pay") {
-      const config = state.quorum ? { ...PAY_BASE, consensus: PAY_CONSENSUS } : { ...PAY_BASE };
+  function compose(st = state) {
+    if (st.call === "pay") {
+      const config = st.quorum ? { ...PAY_BASE, consensus: PAY_CONSENSUS } : { ...PAY_BASE };
       return { config, tool: "payments.send", args: { amount: 40000, to: "GB-unlisted" },
-               approvals: state.approval ? PAY_APPROVALS : [], votes: state.quorum ? votesText(state.signoffs, "payments.send") : "",
+               approvals: st.approval ? PAY_APPROVALS : [], votes: st.quorum ? votesText(st.signoffs, "payments.send") : "",
                stopped: "£40,000 never left the account.", won: "The payment went through — sealed." };
     }
-    if (state.call === "db") {
+    if (st.call === "db") {
       const sql = "drop table users";
       return { config: DB_BASE, tool: "db.execute", args: { database: "prod", sql },
-               approvals: state.approval ? [stableHash(["db.execute", "db", "prod", "write", sql])] : [], votes: "",
+               approvals: st.approval ? [stableHash(["db.execute", "db", "prod", "write", sql])] : [], votes: "",
                stopped: "The production users table is still there.", won: "The destructive query ran — sealed, because a human approved it." };
     }
-    if (state.call === "temporal") {
+    if (st.call === "temporal") {
       const dbA = stableHash(["db.execute", "db", "prod", "write", "drop table users"]);
       const revokeA = stableHash(["session.revoke", "revoke"]);
       const dbStep = { tool: "db.execute", args: { database: "prod", sql: "drop table users" }, approvals: [dbA] };
-      const seq = state.revoked ? [{ tool: "session.revoke", args: {}, approvals: [revokeA] }, dbStep] : [dbStep];
+      const seq = st.revoked ? [{ tool: "session.revoke", args: {}, approvals: [revokeA] }, dbStep] : [dbStep];
       return { config: CFG_TEMPORAL, tool: "db.execute", args: dbStep.args, seq,
                stopped: "The destructive query was blocked — it reused a session after it was revoked.",
                won: "The query ran — sealed (the trace is clean)." };
     }
-    if (state.call === "store") {
-      return { config: STORE_BASE, tool: "store.update", args: { op: state.op, key: "k1" },
-               approvals: state.approval ? STORE_APPROVALS : [], votes: "",
+    if (st.call === "store") {
+      return { config: STORE_BASE, tool: "store.update", args: { op: st.op, key: "k1" },
+               approvals: st.approval ? STORE_APPROVALS : [], votes: "",
                stopped: "The corrupting write never landed — replicas stay consistent.", won: "A provably-convergent write — sealed." };
     }
     return { config: SELF.config, tool: "approve", args: { target: 1 }, approvals: [], votes: "",
              stopped: "The agent could not rubber-stamp itself.", won: "Approved — sealed." };
+  }
+
+  // Act 3's authorized twin: the SAME tool+args with the approval-surface knobs
+  // flipped to the opposite outcome. Pure composition — never mutates `state`,
+  // never touches the determinism lock. null when no such knob exists.
+  function composeTwin() {
+    if (state.call === "self") return null;
+    const st = { ...state };
+    if (st.call === "temporal") st.revoked = !st.revoked;
+    else if (st.call === "pay") {
+      const allowed = st.approval && (!st.quorum || st.signoffs >= 2);
+      if (allowed) st.approval = false;
+      else { st.approval = true; if (st.quorum) st.signoffs = Math.max(2, st.signoffs); }
+    } else st.approval = !st.approval;
+    return compose(st);
   }
 
   const argStr = (a) => JSON.stringify(a).replace(/"([^"]+)":/g, "$1: ");
@@ -162,6 +178,7 @@ function certVector(res) { return JSON.stringify((res.certs || []).map((c) => c.
     if (killedAt < 0) { move(finish); await sleep(T.move); if (my !== runToken) return; finish.classList.add("sealed"); token.classList.add("sealed"); await sleep(T.seal); }
     renderEquation(eq, killedAt >= 0 ? certs.slice(0, killedAt + 1) : certs, killedAt >= 0 ? "DENY" : "ALLOW");
     renderVerdict(res, composed); updateDet(res, composed); prevCerts = certs;
+    renderAudit(res, composed, composeTwin()).catch(() => {}); // Act 3 — presentation only, off the determinism path
   }
 
   // ── controls
