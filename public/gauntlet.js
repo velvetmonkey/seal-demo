@@ -36,12 +36,14 @@ function gateMarkup(kernel, config, tool, decided) {
   );
 }
 
-// the composition equation under the gate row: Safety ✓ · Temporal ✓ · Consensus ✕ → DENY
-function renderEquation(eqEl, certs, verdict) {
-  if (!eqEl) return;
-  const parts = certs.map((c) => `<span>${kname(c.kernel)} <b class="${c.verdict === "deny" ? "ink-deny" : "ink-allow"}">${c.verdict === "deny" ? "✕" : "✓"}</b></span>`);
-  eqEl.innerHTML = parts.join('<span class="eq-op">·</span>') +
-    `<span class="eq-arrow">→</span><b class="${verdict === "DENY" ? "ink-deny" : "ink-allow"}">${verdict}</b>`;
+// the composition equation, one span on the verdict meta line: Safety ✓ · Consensus ✕ → DENY
+function eqHtml(certs) {
+  const di = certs.findIndex((c) => c.verdict === "deny");
+  const shown = di >= 0 ? certs.slice(0, di + 1) : certs;
+  if (!shown.length) return "";
+  const parts = shown.map((c) => `${kname(c.kernel)} <b class="${c.verdict === "deny" ? "ink-deny" : "ink-allow"}">${c.verdict === "deny" ? "✕" : "✓"}</b>`);
+  return `<span class="vm-eq">` + parts.join('<span class="eq-op">·</span>') +
+    `<span class="eq-arrow">→</span><b class="${di >= 0 ? "ink-deny" : "ink-allow"}">${di >= 0 ? "DENY" : "ALLOW"}</b></span>`;
 }
 
 function certVector(res) { return JSON.stringify((res.certs || []).map((c) => c.certHash)); }
@@ -51,7 +53,6 @@ function certVector(res) { return JSON.stringify((res.certs || []).map((c) => c.
   const rail = document.getElementById("rail");
   const banner = document.getElementById("call-banner");
   const track = document.getElementById("track");
-  const eq = document.getElementById("equation");
   const verdict = document.getElementById("verdict-out");
   const det = document.getElementById("det");
   const runBtn = document.getElementById("run");
@@ -124,11 +125,11 @@ function certVector(res) { return JSON.stringify((res.certs || []).map((c) => c.
     if (denyCert) {
       verdict.className = "verdict-out killed";
       verdict.innerHTML = `<span class="big-verdict deny">BLOCKED</span><span class="verdict-consequence">${composed.stopped}</span>` +
-        `<span class="verdict-meta">stopped at the <b>${kname(denyCert.kernel)}</b> gate · seal <span class="vr-hash">${denyCert.certHash}</span></span>`;
+        `<span class="verdict-meta">${eqHtml(res.certs || [])}stopped at the <b>${kname(denyCert.kernel)}</b> gate · seal <span class="vr-hash">${denyCert.certHash}</span></span>`;
     } else {
       verdict.className = "verdict-out sealed";
       verdict.innerHTML = `<span class="big-verdict allow">SEALED</span><span class="verdict-consequence">${composed.won}</span>` +
-        `<span class="verdict-meta">seal <span class="seal-cert-hash">${res.certHash}</span></span>`;
+        `<span class="verdict-meta">${eqHtml(res.certs || [])}seal <span class="seal-cert-hash">${res.certHash}</span></span>`;
     }
   }
   function updateDet(res, composed) {
@@ -144,7 +145,7 @@ function certVector(res) { return JSON.stringify((res.certs || []).map((c) => c.
     let res; try { res = await decideComposed(composed); } catch (e) { return showStageError(verdict, e); }
     if (my !== runToken) return;
     const certs = res.certs || [], config = composed.config, tool = composed.tool;
-    track.innerHTML = ""; if (eq) eq.innerHTML = ""; verdict.innerHTML = ""; verdict.className = "verdict-out";
+    track.innerHTML = ""; verdict.innerHTML = ""; verdict.className = "verdict-out";
     const gates = certs.map((c) => { const g = document.createElement("div"); g.className = "gate"; g.innerHTML = gateMarkup(c.kernel, config, tool, null); track.appendChild(g); return g; });
     const finish = document.createElement("div"); finish.className = "finish";
     finish.innerHTML = `<span class="finish-ico">✦</span><span class="finish-label">SEAL</span>`; track.appendChild(finish);
@@ -162,7 +163,7 @@ function certVector(res) { return JSON.stringify((res.certs || []).map((c) => c.
     token.style.transform = `translate(0px, ${midY(visual(gates[0] || finish))}px)`;
     await sleep(110); if (my !== runToken) return;
 
-    const shown = []; let killedAt = -1;
+    let killedAt = -1;
     for (let i = 0; i < gates.length; i++) {
       const g = gates[i], c = certs[i];
       move(g); await sleep(T.move); if (my !== runToken) return;
@@ -170,13 +171,11 @@ function certVector(res) { return JSON.stringify((res.certs || []).map((c) => c.
       g.querySelector(".gate-stamp").textContent = c.verdict === "deny" ? "DENY" : "ALLOW";
       g.querySelector(".g-result").textContent = "→ " + gateResult(c.kernel, c);
       g.querySelector(".gate-hash").textContent = "seal " + c.certHash;
-      shown.push(c); renderEquation(eq, shown, c.verdict === "deny" ? "DENY" : (i === gates.length - 1 ? "ALLOW" : "…"));
       if (c.verdict === "deny") { g.classList.add("deny"); token.classList.add("destroyed"); killedAt = i; for (let j = i + 1; j < gates.length; j++) gates[j].classList.add("unreached"); await sleep(T.kill); break; }
       g.classList.add("allow"); await sleep(T.stamp); if (my !== runToken) return;
     }
     if (my !== runToken) return;
     if (killedAt < 0) { move(finish); await sleep(T.move); if (my !== runToken) return; finish.classList.add("sealed"); token.classList.add("sealed"); await sleep(T.seal); }
-    renderEquation(eq, killedAt >= 0 ? certs.slice(0, killedAt + 1) : certs, killedAt >= 0 ? "DENY" : "ALLOW");
     renderVerdict(res, composed); updateDet(res, composed); prevCerts = certs;
     renderAudit(res, composed, composeTwin()).catch(() => {}); // Act 3 — presentation only, off the determinism path
   }

@@ -41,46 +41,6 @@ select,button{font:inherit;background:var(--panel);color:var(--ink);border:1px s
 button{cursor:pointer}
 button.go{background:var(--green);color:#04130c;border:0;font-weight:700}
 button.toggle{border-color:var(--accent)}
-/* lanes (demo 1) */
-.lanes{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
-.lane{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px;min-height:230px}
-.lane h3{margin:0 0 2px;font-size:14px}
-.lane .tag{color:var(--mut);font-size:12px;margin-bottom:12px}
-.runs{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:12px;min-height:22px}
-.dot{width:20px;height:20px;border-radius:5px;background:#26303f;display:grid;place-items:center;font-size:11px;font-weight:700}
-.dot.ok{background:rgba(54,211,153,.18);color:var(--green)}
-.dot.bad{background:rgba(248,114,114,.22);color:var(--red)}
-.score{font-size:13px;color:var(--mut)}
-.score b{color:var(--ink)}
-.proof{font-size:11px;color:var(--mut);margin-top:6px;font-family:ui-monospace,monospace;word-break:break-all}
-.blast{margin-top:10px;font-size:12px;color:var(--mut);border-top:1px dashed var(--line);padding-top:8px;min-height:30px}
-.blast.hit{color:var(--red)}
-/* cert table (demo 2 & 3) */
-.verdict-line{display:flex;align-items:center;gap:10px;margin:14px 0;font-size:15px}
-.pill{padding:3px 10px;border-radius:999px;font-weight:700;font-size:13px}
-.pill.allow{background:rgba(54,211,153,.18);color:var(--green)}
-.pill.deny{background:rgba(248,114,114,.2);color:var(--red)}
-.certs{width:100%;border-collapse:collapse;margin-top:8px;font-size:13px}
-.certs th{text-align:left;color:var(--mut);font-weight:500;border-bottom:1px solid var(--line);padding:7px 8px;font-size:12px;text-transform:uppercase;letter-spacing:.05em}
-.certs td{border-bottom:1px solid var(--line);padding:8px}
-.certs td.v-allow{color:var(--green)}
-.certs td.v-deny{color:var(--red)}
-.certs .hash{font-family:ui-monospace,monospace;color:var(--mut);font-size:12px}
-/* honesty / TCB panel */
-.guarantee{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:10px}
-.row{padding:10px;border-radius:8px;border:1px solid var(--line);background:#0e131b}
-.row .k{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--mut)}
-.row .v{font-size:13px;margin-top:4px}
-.row.proven{border-color:rgba(54,211,153,.4)}
-.row.tcb{border-color:rgba(251,189,35,.4)}
-.row.notclaimed{opacity:.6}
-/* cards (landing) */
-.cards{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:14px}
-.card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px;display:block}
-.card:hover{border-color:var(--accent);text-decoration:none}
-.card .n{color:var(--mut);font-size:12px}
-.card h3{margin:4px 0 6px;font-size:15px;color:var(--ink)}
-.card p{margin:0;color:var(--mut);font-size:13px}
 footer{border-top:1px solid var(--line);color:var(--mut);font-size:12px;padding:18px 22px;margin-top:30px}
 
 /* ════════════════════════ THE GAUNTLET ════════════════════════ */
@@ -209,12 +169,10 @@ footer{border-top:1px solid var(--line);color:var(--mut);font-size:12px;padding:
 .cert-note{font-size:12px;color:var(--mut);line-height:1.45;margin:0}
 .cert-note b{color:var(--ink);font-weight:600}
 
-/* the composition equation under the gate row */
-.equation{text-align:center;margin:8px 0 2px;font-size:15px;color:var(--mut);min-height:22px}
-.equation>span{white-space:nowrap}
-.equation b{font-weight:800}
-.equation .eq-op{margin:0 7px;color:#3a4659}
-.equation .eq-arrow{margin:0 10px;color:var(--mut)}
+/* the composition equation, folded into the verdict meta line */
+.vm-eq{white-space:nowrap;margin-right:10px}
+.vm-eq .eq-op{margin:0 5px;color:#3a4659}
+.vm-eq .eq-arrow{margin:0 7px;color:var(--mut)}
 
 /* the determinism replay beat */
 .replay{margin-top:20px;border-top:1px solid var(--line);padding-top:16px}
