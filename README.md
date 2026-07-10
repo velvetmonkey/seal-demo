@@ -13,6 +13,8 @@ A public-facing, browser-runnable demo of **seal** — a verified **Policy Decis
 
 > ⚠️ **Do not double-click `index.html`.** Browsers refuse to fetch WebAssembly over `file://`, so the page loads but every button does nothing. It **must** be served over HTTP.
 
+**One command:** `./demo.sh` — serves `public/` over HTTP, picks a free port, and opens the browser. Or manually:
+
 ```sh
 git clone https://github.com/velvetmonkey/seal-demo.git
 cd seal-demo/public
