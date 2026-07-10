@@ -41,46 +41,6 @@ select,button{font:inherit;background:var(--panel);color:var(--ink);border:1px s
 button{cursor:pointer}
 button.go{background:var(--green);color:#04130c;border:0;font-weight:700}
 button.toggle{border-color:var(--accent)}
-/* lanes (demo 1) */
-.lanes{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
-.lane{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px;min-height:230px}
-.lane h3{margin:0 0 2px;font-size:14px}
-.lane .tag{color:var(--mut);font-size:12px;margin-bottom:12px}
-.runs{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:12px;min-height:22px}
-.dot{width:20px;height:20px;border-radius:5px;background:#26303f;display:grid;place-items:center;font-size:11px;font-weight:700}
-.dot.ok{background:rgba(54,211,153,.18);color:var(--green)}
-.dot.bad{background:rgba(248,114,114,.22);color:var(--red)}
-.score{font-size:13px;color:var(--mut)}
-.score b{color:var(--ink)}
-.proof{font-size:11px;color:var(--mut);margin-top:6px;font-family:ui-monospace,monospace;word-break:break-all}
-.blast{margin-top:10px;font-size:12px;color:var(--mut);border-top:1px dashed var(--line);padding-top:8px;min-height:30px}
-.blast.hit{color:var(--red)}
-/* cert table (demo 2 & 3) */
-.verdict-line{display:flex;align-items:center;gap:10px;margin:14px 0;font-size:15px}
-.pill{padding:3px 10px;border-radius:999px;font-weight:700;font-size:13px}
-.pill.allow{background:rgba(54,211,153,.18);color:var(--green)}
-.pill.deny{background:rgba(248,114,114,.2);color:var(--red)}
-.certs{width:100%;border-collapse:collapse;margin-top:8px;font-size:13px}
-.certs th{text-align:left;color:var(--mut);font-weight:500;border-bottom:1px solid var(--line);padding:7px 8px;font-size:12px;text-transform:uppercase;letter-spacing:.05em}
-.certs td{border-bottom:1px solid var(--line);padding:8px}
-.certs td.v-allow{color:var(--green)}
-.certs td.v-deny{color:var(--red)}
-.certs .hash{font-family:ui-monospace,monospace;color:var(--mut);font-size:12px}
-/* honesty / TCB panel */
-.guarantee{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:10px}
-.row{padding:10px;border-radius:8px;border:1px solid var(--line);background:#0e131b}
-.row .k{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--mut)}
-.row .v{font-size:13px;margin-top:4px}
-.row.proven{border-color:rgba(54,211,153,.4)}
-.row.tcb{border-color:rgba(251,189,35,.4)}
-.row.notclaimed{opacity:.6}
-/* cards (landing) */
-.cards{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:14px}
-.card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px;display:block}
-.card:hover{border-color:var(--accent);text-decoration:none}
-.card .n{color:var(--mut);font-size:12px}
-.card h3{margin:4px 0 6px;font-size:15px;color:var(--ink)}
-.card p{margin:0;color:var(--mut);font-size:13px}
 footer{border-top:1px solid var(--line);color:var(--mut);font-size:12px;padding:18px 22px;margin-top:30px}
 
 /* ════════════════════════ THE GAUNTLET ════════════════════════ */
@@ -90,7 +50,8 @@ footer{border-top:1px solid var(--line);color:var(--mut);font-size:12px;padding:
 .ink-allow{color:var(--green);font-weight:700}
 .ink-deny{color:var(--red);font-weight:700}
 /* the right-hand stage column (call + animated track + verdict + replay) */
-.stage{min-width:0;min-height:0;display:flex;flex-direction:column;gap:10px}
+/* the column scrolls inside its own box on short viewports (page never scrolls) */
+.stage{min-width:0;min-height:0;display:flex;flex-direction:column;gap:10px;overflow-y:auto}
 .stage>*{flex:0 0 auto}
 .stage>.call-banner{margin:0}
 /* the track is the one flexible element: it fills the leftover height, centres the gates, and
@@ -208,12 +169,10 @@ footer{border-top:1px solid var(--line);color:var(--mut);font-size:12px;padding:
 .cert-note{font-size:12px;color:var(--mut);line-height:1.45;margin:0}
 .cert-note b{color:var(--ink);font-weight:600}
 
-/* the composition equation under the gate row */
-.equation{text-align:center;margin:8px 0 2px;font-size:15px;color:var(--mut);min-height:22px}
-.equation>span{white-space:nowrap}
-.equation b{font-weight:800}
-.equation .eq-op{margin:0 7px;color:#3a4659}
-.equation .eq-arrow{margin:0 10px;color:var(--mut)}
+/* the composition equation, folded into the verdict meta line */
+.vm-eq{white-space:nowrap;margin-right:10px}
+.vm-eq .eq-op{margin:0 5px;color:#3a4659}
+.vm-eq .eq-arrow{margin:0 7px;color:var(--mut)}
 
 /* the determinism replay beat */
 .replay{margin-top:20px;border-top:1px solid var(--line);padding-top:16px}
@@ -227,6 +186,50 @@ footer{border-top:1px solid var(--line);color:var(--mut);font-size:12px;padding:
 .rp-cap{margin-top:14px;font-size:16px;color:var(--ink)}
 .rp-cap b{color:var(--green)}
 .rp-cap.broke,.rp-cap.broke b{color:var(--red)}
+
+/* ── Act 3 — the receipt audit. Collapsed by default so the no-scroll stage is untouched;
+   open, it scrolls inside its own box. One focused message per beat. */
+.audit{border:1px solid var(--line);border-radius:10px;background:#0b0e14;font-size:13px}
+.audit>summary{cursor:pointer;padding:10px 14px;color:var(--mut);font-weight:600;list-style:none}
+.audit>summary::before{content:"▸ ";color:var(--accent)}
+.audit[open]>summary::before{content:"▾ "}
+.audit[open]{max-height:46vh;overflow-y:auto}
+.audit #audit-body{padding:0 14px 12px;display:flex;flex-direction:column;gap:12px}
+.a-beat{border-top:1px solid var(--line);padding-top:10px}
+.a-title{font-size:10px;letter-spacing:.14em;text-transform:uppercase;font-weight:800;color:var(--accent);opacity:.85;margin-bottom:5px}
+.a-msg{color:var(--ink);line-height:1.45}
+.a-msg b{font-weight:700}
+.a-chip{display:inline-block;font-weight:900;font-size:11px;letter-spacing:.08em;border-radius:6px;padding:2px 8px;margin-right:6px}
+.a-chip.pass{background:rgba(54,211,153,.15);color:var(--green);border:1px solid rgba(54,211,153,.5)}
+.a-chip.fail{background:rgba(248,114,114,.15);color:var(--red);border:1px solid rgba(248,114,114,.5)}
+.a-hash{margin-top:6px;color:var(--mut)}
+.a-hash code{font-family:ui-monospace,monospace;font-size:11px;color:#8fa3c4;word-break:break-all;background:transparent;border:0;padding:0}
+.a-json{margin-top:6px}
+.a-json>summary{cursor:pointer;color:var(--mut);font-size:12px}
+.a-json pre{margin:6px 0 0;padding:10px;background:#070a0f;border:1px solid var(--line);border-radius:8px;
+  font-size:10.5px;line-height:1.4;color:#9fb0c8;overflow-x:auto;max-height:240px;overflow-y:auto}
+.a-check{font-size:12px;line-height:1.5;margin-top:4px}
+.a-check.ok{color:#bfeede}
+.a-check.bad{color:#ffc0c0}
+.a-hashpair{margin-top:8px;display:flex;flex-direction:column;gap:4px}
+.a-hrow{display:flex;align-items:center;gap:8px}
+.a-hrow code{font-family:ui-monospace,monospace;font-size:11px;color:#8fa3c4;word-break:break-all;background:transparent;border:0;padding:0}
+.a-vtag{flex:0 0 auto;font-size:10px;font-weight:900;letter-spacing:.08em;border-radius:5px;padding:1px 7px}
+.a-vtag.block{color:var(--red);border:1px solid rgba(248,114,114,.5)}
+.a-vtag.allow{color:var(--green);border:1px solid rgba(54,211,153,.5)}
+.a-hnote{font-size:11px;color:var(--mut);margin-top:4px}
+.a-diff{margin-top:8px}
+.a-diff-row{font-size:12px;line-height:1.5;padding:3px 8px;border-radius:6px;word-break:break-word}
+.a-diff-row.auth{background:rgba(251,189,35,.08);border-left:3px solid #ffd24a;color:var(--ink);margin-bottom:3px}
+.a-diff-row.auth b{color:#ffe59a}
+.a-diff-row i{color:var(--mut);font-style:normal;font-size:11px}
+.a-diff-row.minor{color:var(--mut)}
+.a-minor{margin-top:6px}
+.a-minor>summary{cursor:pointer;color:var(--mut);font-size:11px}
+.a-tamper{font:inherit;cursor:pointer;margin-top:6px;background:var(--panel);color:var(--ink);
+  border:1px solid var(--red);border-radius:9px;padding:7px 14px;font-size:13px}
+.a-tamper:hover{background:#1a1014}
+.a-tamper-out{margin-top:8px}
 
 /* intro */
 .intro{margin-bottom:6px}

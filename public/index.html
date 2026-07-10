@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
 <title>seal · the boundary is a theorem</title>
 <!-- bump ?v= on every push so browsers fetch fresh assets without a hard refresh -->
-<link rel="stylesheet" href="style.css?v=20260616o"/>
+<link rel="stylesheet" href="style.css?v=20260710a"/>
 </head>
 <body class="app">
 
@@ -22,15 +22,22 @@
     <div class="call-banner" id="call-banner"></div>
 
     <div class="track-frame"><div class="track" id="track"></div></div>
-    <div class="equation" id="equation"></div>
 
     <div class="verdict-out" id="verdict-out"></div>
-    <p class="cert-note">The hash is the <b>seal</b> — a fingerprint of this exact call, config and verdict. The decision is a proven function, so the <b>same inputs always give the byte-identical seal</b>; change a knob and it changes (try it). Each gate emits its own seal; pass them all and the call leaves <b>sealed</b>.</p>
+    <p class="cert-note">The hash is the <b>seal</b> — a fingerprint of this exact call, config and verdict. The decision is a proven function: <b>same inputs, byte-identical seal</b> (change a knob and it changes). Each gate emits its own; pass them all and the call leaves <b>sealed</b>.</p>
 
     <div class="run-row">
       <button class="run-btn" id="run">↻ Run the same call again</button>
       <span class="det" id="det"></span>
     </div>
+
+    <!-- Act 3 — after the verdict, the receipt becomes the artifact. Everything in here is
+         self-consistency: this page re-derives its own decision through its own kernel and
+         byte-compares against the receipt. It is not an independent audit. -->
+    <details class="audit" id="audit">
+      <summary>Audit the receipt — the run's evidence, re-checked on this device</summary>
+      <div id="audit-body"></div>
+    </details>
   </section>
 </main>
 
@@ -57,6 +64,6 @@
 })();
 </script>
 <script src="wasm/seal.js"></script>
-<script type="module" src="gauntlet.js?v=20260616o"></script>
+<script type="module" src="gauntlet.js?v=20260710a"></script>
 </body>
 </html>

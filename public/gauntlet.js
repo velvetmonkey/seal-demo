@@ -6,6 +6,7 @@
 import { decideConfig, decideSeq, ready } from "./seal-wasm.js";
 import { SCENARIOS, CFG_TEMPORAL, stableHash } from "./seal-config.js";
 import { kname, gatePolicy, gateChecks, gateResult } from "./gates.js";
+import { renderAudit } from "./audit.js";
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 // snappy full-run timings — knob tweaks use the fast path (no travel), so this only plays on a
@@ -35,12 +36,14 @@ function gateMarkup(kernel, config, tool, decided) {
   );
 }
 
-// the composition equation under the gate row: Safety ✓ · Temporal ✓ · Consensus ✕ → DENY
-function renderEquation(eqEl, certs, verdict) {
-  if (!eqEl) return;
-  const parts = certs.map((c) => `<span>${kname(c.kernel)} <b class="${c.verdict === "deny" ? "ink-deny" : "ink-allow"}">${c.verdict === "deny" ? "✕" : "✓"}</b></span>`);
-  eqEl.innerHTML = parts.join('<span class="eq-op">·</span>') +
-    `<span class="eq-arrow">→</span><b class="${verdict === "DENY" ? "ink-deny" : "ink-allow"}">${verdict}</b>`;
+// the composition equation, one span on the verdict meta line: Safety ✓ · Consensus ✕ → DENY
+function eqHtml(certs) {
+  const di = certs.findIndex((c) => c.verdict === "deny");
+  const shown = di >= 0 ? certs.slice(0, di + 1) : certs;
+  if (!shown.length) return "";
+  const parts = shown.map((c) => `${kname(c.kernel)} <b class="${c.verdict === "deny" ? "ink-deny" : "ink-allow"}">${c.verdict === "deny" ? "✕" : "✓"}</b>`);
+  return `<span class="vm-eq">` + parts.join('<span class="eq-op">·</span>') +
+    `<span class="eq-arrow">→</span><b class="${di >= 0 ? "ink-deny" : "ink-allow"}">${di >= 0 ? "DENY" : "ALLOW"}</b></span>`;
 }
 
 function certVector(res) { return JSON.stringify((res.certs || []).map((c) => c.certHash)); }
@@ -50,7 +53,6 @@ function certVector(res) { return JSON.stringify((res.certs || []).map((c) => c.
   const rail = document.getElementById("rail");
   const banner = document.getElementById("call-banner");
   const track = document.getElementById("track");
-  const eq = document.getElementById("equation");
   const verdict = document.getElementById("verdict-out");
   const det = document.getElementById("det");
   const runBtn = document.getElementById("run");
@@ -60,35 +62,50 @@ function certVector(res) { return JSON.stringify((res.certs || []).map((c) => c.
   const votesText = (n, value) => { let s = ""; for (let i = 1; i <= n; i++) s += JSON.stringify({ acceptor: i, value }) + "\n"; return s; };
 
   // compose the REAL {config, tool, args, approvals, votes} + consequence copy from the knobs
-  function compose() {
-    if (state.call === "pay") {
-      const config = state.quorum ? { ...PAY_BASE, consensus: PAY_CONSENSUS } : { ...PAY_BASE };
+  function compose(st = state) {
+    if (st.call === "pay") {
+      const config = st.quorum ? { ...PAY_BASE, consensus: PAY_CONSENSUS } : { ...PAY_BASE };
       return { config, tool: "payments.send", args: { amount: 40000, to: "GB-unlisted" },
-               approvals: state.approval ? PAY_APPROVALS : [], votes: state.quorum ? votesText(state.signoffs, "payments.send") : "",
+               approvals: st.approval ? PAY_APPROVALS : [], votes: st.quorum ? votesText(st.signoffs, "payments.send") : "",
                stopped: "£40,000 never left the account.", won: "The payment went through — sealed." };
     }
-    if (state.call === "db") {
+    if (st.call === "db") {
       const sql = "drop table users";
       return { config: DB_BASE, tool: "db.execute", args: { database: "prod", sql },
-               approvals: state.approval ? [stableHash(["db.execute", "db", "prod", "write", sql])] : [], votes: "",
+               approvals: st.approval ? [stableHash(["db.execute", "db", "prod", "write", sql])] : [], votes: "",
                stopped: "The production users table is still there.", won: "The destructive query ran — sealed, because a human approved it." };
     }
-    if (state.call === "temporal") {
+    if (st.call === "temporal") {
       const dbA = stableHash(["db.execute", "db", "prod", "write", "drop table users"]);
       const revokeA = stableHash(["session.revoke", "revoke"]);
       const dbStep = { tool: "db.execute", args: { database: "prod", sql: "drop table users" }, approvals: [dbA] };
-      const seq = state.revoked ? [{ tool: "session.revoke", args: {}, approvals: [revokeA] }, dbStep] : [dbStep];
+      const seq = st.revoked ? [{ tool: "session.revoke", args: {}, approvals: [revokeA] }, dbStep] : [dbStep];
       return { config: CFG_TEMPORAL, tool: "db.execute", args: dbStep.args, seq,
                stopped: "The destructive query was blocked — it reused a session after it was revoked.",
                won: "The query ran — sealed (the trace is clean)." };
     }
-    if (state.call === "store") {
-      return { config: STORE_BASE, tool: "store.update", args: { op: state.op, key: "k1" },
-               approvals: state.approval ? STORE_APPROVALS : [], votes: "",
+    if (st.call === "store") {
+      return { config: STORE_BASE, tool: "store.update", args: { op: st.op, key: "k1" },
+               approvals: st.approval ? STORE_APPROVALS : [], votes: "",
                stopped: "The corrupting write never landed — replicas stay consistent.", won: "A provably-convergent write — sealed." };
     }
     return { config: SELF.config, tool: "approve", args: { target: 1 }, approvals: [], votes: "",
              stopped: "The agent could not rubber-stamp itself.", won: "Approved — sealed." };
+  }
+
+  // Act 3's authorized twin: the SAME tool+args with the approval-surface knobs
+  // flipped to the opposite outcome. Pure composition — never mutates `state`,
+  // never touches the determinism lock. null when no such knob exists.
+  function composeTwin() {
+    if (state.call === "self") return null;
+    const st = { ...state };
+    if (st.call === "temporal") st.revoked = !st.revoked;
+    else if (st.call === "pay") {
+      const allowed = st.approval && (!st.quorum || st.signoffs >= 2);
+      if (allowed) st.approval = false;
+      else { st.approval = true; if (st.quorum) st.signoffs = Math.max(2, st.signoffs); }
+    } else st.approval = !st.approval;
+    return compose(st);
   }
 
   const argStr = (a) => JSON.stringify(a).replace(/"([^"]+)":/g, "$1: ");
@@ -108,11 +125,11 @@ function certVector(res) { return JSON.stringify((res.certs || []).map((c) => c.
     if (denyCert) {
       verdict.className = "verdict-out killed";
       verdict.innerHTML = `<span class="big-verdict deny">BLOCKED</span><span class="verdict-consequence">${composed.stopped}</span>` +
-        `<span class="verdict-meta">stopped at the <b>${kname(denyCert.kernel)}</b> gate · seal <span class="vr-hash">${denyCert.certHash}</span></span>`;
+        `<span class="verdict-meta">${eqHtml(res.certs || [])}stopped at the <b>${kname(denyCert.kernel)}</b> gate · seal <span class="vr-hash">${denyCert.certHash}</span></span>`;
     } else {
       verdict.className = "verdict-out sealed";
       verdict.innerHTML = `<span class="big-verdict allow">SEALED</span><span class="verdict-consequence">${composed.won}</span>` +
-        `<span class="verdict-meta">seal <span class="seal-cert-hash">${res.certHash}</span></span>`;
+        `<span class="verdict-meta">${eqHtml(res.certs || [])}seal <span class="seal-cert-hash">${res.certHash}</span></span>`;
     }
   }
   function updateDet(res, composed) {
@@ -128,7 +145,7 @@ function certVector(res) { return JSON.stringify((res.certs || []).map((c) => c.
     let res; try { res = await decideComposed(composed); } catch (e) { return showStageError(verdict, e); }
     if (my !== runToken) return;
     const certs = res.certs || [], config = composed.config, tool = composed.tool;
-    track.innerHTML = ""; if (eq) eq.innerHTML = ""; verdict.innerHTML = ""; verdict.className = "verdict-out";
+    track.innerHTML = ""; verdict.innerHTML = ""; verdict.className = "verdict-out";
     const gates = certs.map((c) => { const g = document.createElement("div"); g.className = "gate"; g.innerHTML = gateMarkup(c.kernel, config, tool, null); track.appendChild(g); return g; });
     const finish = document.createElement("div"); finish.className = "finish";
     finish.innerHTML = `<span class="finish-ico">✦</span><span class="finish-label">SEAL</span>`; track.appendChild(finish);
@@ -146,7 +163,7 @@ function certVector(res) { return JSON.stringify((res.certs || []).map((c) => c.
     token.style.transform = `translate(0px, ${midY(visual(gates[0] || finish))}px)`;
     await sleep(110); if (my !== runToken) return;
 
-    const shown = []; let killedAt = -1;
+    let killedAt = -1;
     for (let i = 0; i < gates.length; i++) {
       const g = gates[i], c = certs[i];
       move(g); await sleep(T.move); if (my !== runToken) return;
@@ -154,14 +171,13 @@ function certVector(res) { return JSON.stringify((res.certs || []).map((c) => c.
       g.querySelector(".gate-stamp").textContent = c.verdict === "deny" ? "DENY" : "ALLOW";
       g.querySelector(".g-result").textContent = "→ " + gateResult(c.kernel, c);
       g.querySelector(".gate-hash").textContent = "seal " + c.certHash;
-      shown.push(c); renderEquation(eq, shown, c.verdict === "deny" ? "DENY" : (i === gates.length - 1 ? "ALLOW" : "…"));
       if (c.verdict === "deny") { g.classList.add("deny"); token.classList.add("destroyed"); killedAt = i; for (let j = i + 1; j < gates.length; j++) gates[j].classList.add("unreached"); await sleep(T.kill); break; }
       g.classList.add("allow"); await sleep(T.stamp); if (my !== runToken) return;
     }
     if (my !== runToken) return;
     if (killedAt < 0) { move(finish); await sleep(T.move); if (my !== runToken) return; finish.classList.add("sealed"); token.classList.add("sealed"); await sleep(T.seal); }
-    renderEquation(eq, killedAt >= 0 ? certs.slice(0, killedAt + 1) : certs, killedAt >= 0 ? "DENY" : "ALLOW");
     renderVerdict(res, composed); updateDet(res, composed); prevCerts = certs;
+    renderAudit(res, composed, composeTwin()).catch(() => {}); // Act 3 — presentation only, off the determinism path
   }
 
   // ── controls

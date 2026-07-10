@@ -90,8 +90,8 @@ export function buildStepInput({ tool, args, approvals = [], now = 1000, votes =
 // Parse seal_host_step output -> demo-friendly verdict.
 export function parseVerdict(raw, tool) {
   const v = JSON.parse(raw);
-  if (v.error) return { verdict: "ERROR", reason: v.error, certs: [], tool };
-  if (v.route === "passthrough") return { verdict: "ALLOW", reason: "not a mediated tool call (passthrough)", certs: [], tool };
+  if (v.error) return { verdict: "ERROR", reason: v.error, certs: [], tool, emitted: raw };
+  if (v.route === "passthrough") return { verdict: "ALLOW", reason: "not a mediated tool call (passthrough)", certs: [], tool, emitted: raw };
   const audit = v.audit ? JSON.parse(v.audit) : { certs: [], verdict: v.route === "block" ? "deny" : "allow" };
   const certs = (audit.certs || []).map((c) => ({ kernel: c.kernel, verdict: c.verdict, reason: c.reason, certHash: String(c.certHash) }));
   const denied = certs.find((c) => c.verdict === "deny");
@@ -102,5 +102,7 @@ export function parseVerdict(raw, tool) {
     certs, tool,
     // single representative cert for the determinism lane (the deny cert, else first)
     certHash: (denied || certs[0] || {}).certHash || null,
+    // the raw seal_host_step output — the receipt bytes the audit act surfaces
+    emitted: raw,
   };
 }
