@@ -13,15 +13,13 @@ One command serves it and opens the browser. Click "Send the call" on the gauntl
 
 ## Quick start (luxury 1-command showcase)
 
-**One command:**
+**One command (luxury showcase):**
 
 ```sh
-git clone https://github.com/velvetmonkey/seal-demo.git
-cd seal-demo
-./demo.sh
+bash scripts/showcase.sh
 ```
 
-Then open the served URL and click **▶ Send the call** (or drive the gauntlet knobs). You will see the live kernel verdict for attack vs benign cases.
+Serves public/ headless briefly and probes, printing kernel/verdict/block/gauntlet/ALLOW/DENY lines. Or use ./demo.sh and click in browser for full gauntlet.
 
 (If no ./demo.sh: `cd public && python3 -m http.server 8080`, visit http://localhost:8080 — NOT file://.)
 
