@@ -11,15 +11,6 @@ One command serves it and opens the browser. Click "Send the call" on the gauntl
 > kernel. It does not claim the proxy, auth, sandbox, or parser are unbypassable.
 > See "The honest claim" below.
 
-## Trust boundaries
-
-These are the four explicit places where Seal's proofs stop. They are strengths because the boundaries are known and each is closed by a named, auditable mechanism outside the kernel.
-
-1. Byzantine / non-participating replica — non-bypass proven for replicas that RUN the gate; a replica not running seal is outside the TCB by definition. Closes via: attestation of the sealed core.
-2. Egress after allow (P6) — seal mediates the DECISION and records it, not the downstream effect. Closes via: compose with an egress proxy; decision gate by design. (Already in RUST_BRIDGE.md.)
-3. Model vs compiled binary — proofs bind the routing core the code delegates to (Ffi.stepImpl → composed kernels), not a byte-for-byte proof of the compiled wasm; strongest in category. Closes via: the binary differential (Lane C), a wasm-vs-Lean-decide oracle.
-4. Partition liveness — safety (no double-spend) holds unconditionally under partition; liveness is conditional, inherited from crdt-lean. The correct safety-over-availability tradeoff.
-
 ## Quick start (luxury 1-command showcase)
 
 **One command (luxury showcase):**
@@ -53,6 +44,19 @@ It also does **not** claim the compiled kernel provably equals the Lean model: `
 **Profile:** the deployed seal host mediates under the `compatible` profile, not strict canonical-l0 (see seal-host CLAIMS.md); the canonical AST is audit input to the kernels, not the mediation gate.
 
 **Terminology:** this page writes **DENY** where the seal family's canonical verdict vocabulary is **BLOCK** — read DENY as BLOCK; the underlying verdict is identical.
+
+## Trust boundaries
+
+These are the four explicit places where Seal's proofs stop; each is a strength because the boundary is known and closed by a named mechanism outside the kernel. Canonical copy: [docs/LIMITATIONS.md](docs/LIMITATIONS.md); `scripts/claims-drift.mjs` fails the build if this mirror drifts.
+
+<!-- trust-boundaries:begin -->
+These are the four explicit places where Seal's proofs stop. They are strengths because the boundaries are known and each is closed by a named, auditable mechanism outside the kernel.
+
+1. Byzantine / non-participating replica — non-bypass proven for replicas that RUN the gate; a replica not running seal is outside the TCB by definition. Closes via: attestation of the sealed core.
+2. Egress after allow (P6) — seal mediates the DECISION and records it, not the downstream effect. Closes via: compose with an egress proxy; decision gate by design. (Already in RUST_BRIDGE.md.)
+3. Model vs compiled binary — proofs bind the routing core the code delegates to (Ffi.stepImpl → composed kernels), not a byte-for-byte proof of the compiled wasm; strongest in category. Closes via: the binary differential (Lane C), a wasm-vs-Lean-decide oracle.
+4. Partition liveness — safety (no double-spend) holds unconditionally under partition; liveness is conditional, inherited from crdt-lean. The correct safety-over-availability tradeoff.
+<!-- trust-boundaries:end -->
 
 ## How it works — AI is filmed, the kernel decides live
 
