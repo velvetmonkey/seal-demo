@@ -19,7 +19,7 @@ One command serves it and opens the browser. Click "Send the call" on the gauntl
 bash scripts/showcase.sh
 ```
 
-Launches the static demo server (prints the live URL). Open it and click "Send the call" on the gauntlet — watch the verified kernel compute BLOCK for the attack path and ALLOW for the benign one, with real verdict panels and certs. (Use `./demo.sh --no-open` directly if preferred.)
+One command serves the static kernel demo briefly and prints real page content (including "Proven — ALLOW iff...", "the decision is a proven function", verdict, kernel, trusted TCB notes). Open the URL for the interactive gauntlet that watches the verified WASM kernel decide live BLOCK/ALLOW. (Equivalent to ./demo.sh --no-open.)
 
 (If no ./demo.sh: `cd public && python3 -m http.server 8080`, visit http://localhost:8080 — NOT file://.)
 
