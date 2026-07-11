@@ -19,7 +19,7 @@ One command serves it and opens the browser. Click "Send the call" on the gauntl
 bash scripts/showcase.sh
 ```
 
-Serves public/ headless briefly and probes, printing kernel/verdict/block/gauntlet/ALLOW/DENY lines. Or use ./demo.sh and click in browser for full gauntlet.
+Launches the static demo server (prints the live URL). Open it and click "Send the call" on the gauntlet — watch the verified kernel compute BLOCK for the attack path and ALLOW for the benign one, with real verdict panels and certs. (Use `./demo.sh --no-open` directly if preferred.)
 
 (If no ./demo.sh: `cd public && python3 -m http.server 8080`, visit http://localhost:8080 — NOT file://.)
 
