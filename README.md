@@ -1,27 +1,31 @@
 # seal-demo
 
-A public-facing, browser-runnable demo of **seal** — a verified **Policy Decision Point (PDP)** that mediates an LLM agent's tool calls. A Lean 4 kernel proves the policy-evaluation logic is sound.
+**Watch the verified kernel decide live in your browser: a scripted attack gets BLOCKED, a benign one ALLOWED. Click once, see the real math.**
+
+No backend. The Lean-proven decision procedure runs in WASM. Every ALLOW/DENY and cert is computed on the page.
+
+One command serves it and opens the browser. Click "Send the call" on the gauntlet — the kernel judges gate by gate.
 
 > seal proves the *decision*, not the whole stack: for a canonical request and a
 > policy, the verdict is what the theorem says, computed live by the verified
 > kernel. It does not claim the proxy, auth, sandbox, or parser are unbypassable.
 > See "The honest claim" below.
 
-## Quick start
+## Quick start (luxury 1-command showcase)
 
-**Prerequisites:** a modern web browser and any static file server. There is nothing to compile or install — `public/` *is* the demo, and the verified kernel ships pre-compiled as WebAssembly (`public/wasm/seal.wasm`).
-
-> ⚠️ **Do not double-click `index.html`.** Browsers refuse to fetch WebAssembly over `file://`, so the page loads but every button does nothing. It **must** be served over HTTP.
-
-**One command:** `./demo.sh` — serves `public/` over HTTP, picks a free port, and opens the browser. Or manually:
+**One command:**
 
 ```sh
 git clone https://github.com/velvetmonkey/seal-demo.git
-cd seal-demo/public
-python3 -m http.server 8080        # serve over HTTP (NOT file://)
+cd seal-demo
+./demo.sh
 ```
 
-Then open **http://localhost:8080** and click **▶ Send the call**.
+Then open the served URL and click **▶ Send the call** (or drive the gauntlet knobs). You will see the live kernel verdict for attack vs benign cases.
+
+(If no ./demo.sh: `cd public && python3 -m http.server 8080`, visit http://localhost:8080 — NOT file://.)
+
+The kernel is the substance. The pre-scripted agent narrative just sets the stage.
 
 No Python? Any static server works — from inside `public/`:
 
