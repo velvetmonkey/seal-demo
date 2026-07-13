@@ -31,3 +31,11 @@ Missing on the assistant box; install where `seal-host` is built:
 1. Run the real frontier agent against the sandbox **offline, once**, with seal in observe mode.
 2. Capture each attack: the agent's reasoning trace + the exact tool call it attempts.
 3. Save as `fixtures/<id>.json` per `fixtures/schema.json`. Curate the good takes. These are the only AI that ever touches the demo.
+
+The narrative is recorded input. Regenerate all kernel-derived verdict and cert
+fields through the shipped browser evaluator with:
+
+```sh
+node scripts/regenerate-fixtures.cjs
+node scripts/regenerate-fixtures.cjs --check
+```

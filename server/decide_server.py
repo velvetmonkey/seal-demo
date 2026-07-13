@@ -7,27 +7,28 @@ No model in the loop. Each request signs a trusted config, spawns the actual
 seal-host (the 222MB Lean-verified exe), feeds it the tool call over MCP stdio,
 and reads the real verdict + cert hashes off the audit line.
 """
-import json, os, subprocess, tempfile
+import hashlib, json, os, subprocess, tempfile
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
+from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 
 HOME = Path.home()
 SEAL_BIN = os.environ.get("SEAL_BIN", str(HOME / "src/seal-host/.lake/build/bin/seal-host"))
 MOCK = os.environ.get("SEAL_MOCK", str(HOME / "src/seal-host/test/integration/mock_mcp_server.py"))
 PUBLIC = os.environ.get("SEAL_PUBLIC", str(HOME / "src/seal-demo/public"))
-PUBKEY = "demo-pk"
+PUBKEY = "d75a980182b10ab7d54bfed3c964073a0ee172f3daa62325af021a68f707511a"
+TEST_PRIVATE_KEY = Ed25519PrivateKey.from_private_bytes(bytes.fromhex(
+    "9d61b19deffd5a60ba844af492ec2cc44449c5697b326919703bac031cae7f60"))
 
 
 def sign(payload: dict) -> str:
     body = json.dumps(payload, separators=(",", ":"))
-    return json.dumps({"payload": body, "signature": f"stub-ed25519:{PUBKEY}:{body}"}, separators=(",", ":"))
+    return json.dumps({"payload": body, "signature": TEST_PRIVATE_KEY.sign(body.encode()).hex()}, separators=(",", ":"))
 
 
-def stable_hash(parts) -> int:
-    acc = 14695981039346656037
-    for ch in "|".join(parts):
-        acc = (acc * 1099511628211 + ord(ch)) % 2**64
-    return acc
+def stable_hash(parts) -> str:
+    encoded = "".join(f"{len(str(part))}:{part}" for part in parts)
+    return hashlib.sha256(encoded.encode()).hexdigest()
 
 
 # ---- policy section builders ----

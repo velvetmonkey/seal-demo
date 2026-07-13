@@ -180,12 +180,13 @@ export function assembleReceiptV1(fields) {
 const V2_KEY_ORDER = [
   "seal_receipt", "tool", "action", "arguments", "args_hash", "now",
   "canonical_request", "canonical_request_sha256", "bypass", "verdict",
-  "reason", "deny_kernel", "amount", "merchant", "currency", "approval",
-  "certs", "emitted_bytes", "kernel_identity", "asserted_provenance",
-  "kernel_config", "granted_capabilities", "policy_id", "signature",
+  "authorization", "reason", "deny_kernel", "amount", "merchant", "currency", "approval",
+  "certs", "emitted_bytes", "kernel_identity", "host_identity", "asserted_provenance",
+  "signed_config", "kernel_config", "granted_capabilities", "policy_id", "signature",
 ];
 const APPROVAL_KEY_ORDER = ["approval_identity", "nonce", "issued_at", "expiry", "policy_hash"];
 const IDENTITY_KEY_ORDER = ["channel", "key_id"];
+const SIGNED_CONFIG_KEY_ORDER = ["payload", "signature", "pubkey"];
 
 function orderKeys(obj, order) {
   const out = {};
@@ -206,6 +207,7 @@ export function assembleReceiptV2(fields) {
     if (isObj(a.approval_identity)) a.approval_identity = orderKeys(a.approval_identity, IDENTITY_KEY_ORDER);
     f.approval = orderKeys(a, APPROVAL_KEY_ORDER);
   }
+  if (isObj(f.signed_config)) f.signed_config = orderKeys(f.signed_config, SIGNED_CONFIG_KEY_ORDER);
   const r = { seal_receipt: RECEIPT_SCHEMA_VERSION_V2 };
   for (const k of V2_KEY_ORDER) {
     if (k === "seal_receipt") continue;
@@ -216,6 +218,7 @@ export function assembleReceiptV2(fields) {
 
 // --- §1/§7: shape validation ---------------------------------------------------
 const HEX64 = /^[0-9a-f]{64}$/;
+const HEX128 = /^[0-9a-f]{128}$/;
 const isObj = (v) => v !== null && typeof v === "object" && !Array.isArray(v);
 
 // Structural validation against the v1/v2 field tables. Returns
@@ -225,6 +228,8 @@ const isObj = (v) => v !== null && typeof v === "object" && !Array.isArray(v);
 export function validateReceipt(r) {
   const errors = [];
   if (!isObj(r)) return { ok: false, version: null, errors: ["receipt is not an object"] };
+  if ("authority_trusted" in r)
+    errors.push("authority_trusted: verifier-computed only; forbidden in a receipt");
 
   let version = null;
   if (r.seal_receipt === RECEIPT_SCHEMA_VERSION_V2) version = "v2";
@@ -245,6 +250,8 @@ export function validateReceipt(r) {
   if (!VERDICTS.includes(r.verdict)) errors.push(`verdict: one of ${VERDICTS.join("|")} required`);
   if (typeof r.reason !== "string") errors.push("reason: string required");
   if (!isObj(r.kernel_identity)) errors.push("kernel_identity: object required");
+  if ("host_identity" in r && !isObj(r.host_identity))
+    errors.push("host_identity: object when present");
 
   // §2: if the pre-image line is stored, it must be the derived one.
   if (typeof r.tool === "string" && isObj(r.arguments) && typeof r.canonical_request === "string" &&
@@ -269,6 +276,14 @@ export function validateReceipt(r) {
       if (typeof r.kernel_identity.self_verified !== "boolean")
         errors.push(`kernel_identity.self_verified: boolean required in ${version}`);
     }
+  }
+  if (isObj(r.host_identity)) {
+    for (const k of ["native_executable_sha256", "lean_ffi_sha256"]) {
+      if (typeof r.host_identity[k] !== "string" || !HEX64.test(r.host_identity[k]))
+        errors.push(`host_identity.${k}: 64-hex string required`);
+    }
+    if (r.host_identity.equivalence !== "not_proven")
+      errors.push("host_identity.equivalence: must be not_proven");
   }
   if ((version === "v1" || version === "v2") && "asserted_provenance" in r) {
     if (!isObj(r.asserted_provenance) || r.asserted_provenance.verified_in_browser === true)
@@ -308,10 +323,37 @@ function validateV2Extras(r, errors) {
     errors.push("args_hash: must be absent on bypass");
   }
 
-  // Approval block: required on mediated ALLOW; optional on BLOCK; forbidden on bypass.
+  if (r.bypass === true) {
+    if ("signed_config" in r) errors.push("signed_config: must be absent on bypass");
+  } else if (!isObj(r.signed_config)) {
+    errors.push("signed_config: object required when mediated (v2)");
+  } else {
+    const keys = Object.keys(r.signed_config);
+    if (JSON.stringify(keys) !== JSON.stringify(SIGNED_CONFIG_KEY_ORDER))
+      errors.push("signed_config: exact key order payload,signature,pubkey required");
+    if (typeof r.signed_config.payload !== "string")
+      errors.push("signed_config.payload: exact signed JSON string required");
+    if (typeof r.signed_config.signature !== "string" || !HEX128.test(r.signed_config.signature))
+      errors.push("signed_config.signature: 128-hex Ed25519 signature required");
+    if (typeof r.signed_config.pubkey !== "string" || !HEX64.test(r.signed_config.pubkey))
+      errors.push("signed_config.pubkey: 64-hex Ed25519 public key required");
+  }
+
+  // Approval block: v2 originally required it on every mediated ALLOW. Policy-v2
+  // adds explicit policy ALLOW, which carries authorization=explicit_policy_allow
+  // and no approval. Missing authorization remains accepted for legacy v2 ALLOW.
+  if ("authorization" in r && !["approval", "explicit_policy_allow"].includes(r.authorization))
+    errors.push("authorization: approval|explicit_policy_allow when present");
   if (r.bypass === true && "approval" in r) errors.push("approval: must be absent on bypass");
-  if (r.bypass === false && r.verdict === "ALLOW" && !isObj(r.approval))
-    errors.push("approval: object required on mediated ALLOW (v2)");
+  if (r.bypass === false && r.verdict === "ALLOW") {
+    const auth = r.authorization || "approval";
+    if (auth === "approval" && !isObj(r.approval))
+      errors.push("approval: object required for approval-authorized ALLOW");
+    if (auth === "explicit_policy_allow" && "approval" in r)
+      errors.push("approval: forbidden on explicit policy ALLOW");
+    if (auth === "explicit_policy_allow" && Array.isArray(r.granted_capabilities) && r.granted_capabilities.length)
+      errors.push("granted_capabilities: must be empty on explicit policy ALLOW");
+  }
   if (isObj(r.approval)) {
     const a = r.approval;
     const id = a.approval_identity;

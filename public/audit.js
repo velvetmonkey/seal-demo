@@ -14,13 +14,13 @@
 // No new verification capability.
 import * as F from "./receipt-format.js";
 import { receiptDiff } from "./receipt-diff.js";
-import { decideConfig, decideSeq } from "./seal-wasm.js";
+import { decideConfig, decideSeq, decideSignedRaw } from "./seal-wasm.js";
 
 // sha256 of public/wasm/seal.wasm, pinned at commit time. The page re-hashes
 // the wasm it actually fetched and compares — this backs the README claim
 // that the in-browser sha256 shows which binary ran (a trusted compile of the
 // proved kernels; the compile itself is trusted, not proved).
-export const SEAL_WASM_SHA256 = "1cc765c7de2cead88eda2e8e5f5af5a5e070f35a767916e754b873733562c70a";
+export const SEAL_WASM_SHA256 = "df42cbada2297741bfeab99f222b96ac02e43a4ce8695b24922b425b8d66b1e8";
 
 let _identity = null;
 async function kernelIdentity() {
@@ -57,6 +57,7 @@ export async function buildRunReceipt(res, composed) {
     canonical_request_sha256: F.canonicalRequestSha256(step.tool, step.args),
     bypass: false,
     verdict,
+    authorization: verdict === "ALLOW" ? ((step.approvals || []).length ? "approval" : "explicit_policy_allow") : undefined,
     reason: res.reason,
     deny_kernel: res.deny_kernel ?? null,
     certs: (res.certs || []).map((c) => ({ kernel: c.kernel, verdict: c.verdict, reason: c.reason, certHash: c.certHash })),
@@ -65,10 +66,12 @@ export async function buildRunReceipt(res, composed) {
       note: "sha256 of the wasm this page fetched, compared to the commit-time pin" },
     asserted_provenance: { verified_in_browser: false,
       note: "compiled from the Lean-proved seal kernels; the compile (T3) is trusted, not proved — see README, The honest claim" },
+    signed_config: res.signed_config,
     kernel_config: composed.config,
-    granted_capabilities: (step.approvals || []).map((t) => ({ tool: step.tool, stable_target: String(t) })),
+    granted_capabilities: (step.approvals || []).map((t) => ({ target: String(t) })),
   };
-  if (verdict === "ALLOW") fields.approval = { approval_identity: { channel: "file" } };
+  if (verdict === "ALLOW" && (step.approvals || []).length)
+    fields.approval = { approval_identity: { channel: "file" } };
   const r = F.assembleReceiptV2(fields);
   // producer-local replay inputs, attached AFTER canonical assembly (the fixed
   // v2 key order only carries schema fields; verifiers MUST ignore this block)
@@ -82,25 +85,11 @@ export async function buildRunReceipt(res, composed) {
   return r;
 }
 
-// Re-decide from the receipt's own kernel_config + replay inputs.
-function redecide(receipt) {
-  const rp = receipt.demo_replay || {};
-  if (rp.seq) {
-    return decideSeq(receipt.kernel_config,
-      rp.seq.map((s) => ({ tool: s.tool, args: s.args, approvals: (s.approvals || []).map(BigInt) })),
-      receipt.tool);
-  }
-  return decideConfig(receipt.kernel_config, {
-    tool: receipt.tool, args: receipt.arguments,
-    approvals: (rp.approvals || []).map(BigInt), votes: rp.votes || "",
-  });
-}
-
 // Self-consistency re-check, mirroring seal-check's verify orchestration over
 // THIS demo's decide path: schema shape -> kernel binary hash -> canonical
 // request hash -> re-derive the decision -> byte-compare emitted bytes.
 export async function verifyRunReceipt(receipt) {
-  const out = { checks: [] };
+  const out = { checks: [], signature_valid: false, kernel_replay_consistent: false };
   const shape = F.validateReceipt(receipt);
   out.formatOk = shape.ok;
   out.checks.push({ ok: shape.ok, label: shape.ok
@@ -124,18 +113,46 @@ export async function verifyRunReceipt(receipt) {
     ? `request bytes re-hashed — canonical_request_sha256 matches (${String(reqHash).slice(0, 12)}…)`
     : "canonical_request_sha256 does not match the hash of this receipt's own (tool, arguments)" });
 
+  const bindingErrors = [];
+  let signedPayload = null;
+  try {
+    signedPayload = JSON.parse(receipt.signed_config?.payload);
+    if (JSON.stringify(signedPayload) !== receipt.signed_config?.payload)
+      bindingErrors.push("signed_config.payload is not byte-identical compact JSON");
+    if (JSON.stringify(receipt.kernel_config) !== receipt.signed_config?.payload)
+      bindingErrors.push("kernel_config does not byte-equal signed_config.payload");
+    if (receipt.approval && receipt.approval.policy_hash !== F.sha256Hex(new TextEncoder().encode(receipt.signed_config.payload)))
+      bindingErrors.push("approval.policy_hash does not bind the exact signed payload bytes");
+  } catch (e) { bindingErrors.push("signed_config.payload is not valid JSON: " + e.message); }
+  const grants = F.capabilityTargetsFromPolicy(signedPayload, receipt.granted_capabilities);
+  bindingErrors.push(...grants.errors);
+  out.bindingOk = bindingErrors.length === 0;
+  out.checks.push({ ok: out.bindingOk, label: out.bindingOk
+    ? "signed payload bytes, policy hash, and capability grants are bound"
+    : "signed-config binding: " + bindingErrors.join("; ") });
+
   let verdictMatch = false, bytesMatch = false, rederived = null;
   try {
-    const res = await redecide(receipt);
-    rederived = mapVerdict(res.verdict);
+    const rp = receipt.demo_replay || {};
+    const res = out.bindingOk ? await decideSignedRaw(receipt.signed_config, {
+      tool: receipt.tool, args: receipt.arguments, approvals: grants.approvals,
+      now: receipt.now ?? 1000, votes: rp.votes || "", seq: rp.seq || null,
+    }) : { signature_valid: false };
+    out.signature_valid = res.signature_valid;
+    if (!res.signature_valid) throw new Error("seal_init rejected the Ed25519 signature");
+    rederived = mapVerdict(res.parsed.verdict);
     verdictMatch = rederived === receipt.verdict;
-    bytesMatch = typeof res.emitted === "string" && res.emitted === receipt.emitted_bytes;
+    bytesMatch = typeof res.raw === "string" && res.raw === receipt.emitted_bytes;
   } catch (e) {
     out.checks.push({ ok: false, label: "re-decide failed: " + (e?.message || e) });
   }
   out.rederived = rederived;
   out.verdictMatch = verdictMatch;
   out.emittedBytesMatch = bytesMatch;
+  out.kernel_replay_consistent = verdictMatch && bytesMatch;
+  out.checks.push({ ok: out.signature_valid, label: out.signature_valid
+    ? "signature_valid: true (Ed25519 over the exact config payload bytes)"
+    : "signature_valid: false" });
   out.checks.push({ ok: verdictMatch, label: verdictMatch
     ? `decision re-derived through this page's own kernel: ${rederived} (same inputs, same verdict)`
     : `re-derived verdict ${rederived ?? "(none)"} does not match the receipt's ${receipt.verdict}` });
@@ -143,7 +160,7 @@ export async function verifyRunReceipt(receipt) {
     ? "emitted decision bytes byte-identical to the re-run"
     : "emitted decision bytes differ from the re-run" });
 
-  out.allGood = out.formatOk && shaMatch && reqMatch && verdictMatch && bytesMatch;
+  out.allGood = out.formatOk && shaMatch && reqMatch && out.bindingOk && out.signature_valid && out.kernel_replay_consistent;
   return out;
 }
 
@@ -223,7 +240,8 @@ export async function renderAudit(res, composed, twinComposed) {
          ? "re-derived on-device — decision and emitted bytes match this receipt (self-consistency, not an independent audit)"
          : "a check failed — treat this receipt with suspicion")}</div>
        <div class="a-hash">canonical_request_sha256 <code>${esc(h)}</code></div>
-       <details class="a-json"><summary>the five checks</summary>${checkLines(v)}</details></div>
+       <div class="a-hash">signature_valid <code>${esc(v.signature_valid)}</code> · kernel_replay_consistent <code>${esc(v.kernel_replay_consistent)}</code></div>
+       <details class="a-json"><summary>verification checks</summary>${checkLines(v)}</details></div>
      <div class="a-beat"><div class="a-title">3 · same request, two decisions</div>${b3}</div>
      ${b4 ? `<div class="a-beat"><div class="a-title">4 · what changed</div>${b4}</div>` : ""}
      <div class="a-beat"><div class="a-title">${b4 ? "5" : "4"} · tamper with it</div>

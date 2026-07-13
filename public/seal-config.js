@@ -6,27 +6,47 @@
 // Each scenario carries the exact trusted-config + tool call that reproduces the
 // verified verdict the demo narrates. Cert hashes are emitted by the kernel, not
 // encoded here.
+import { stableHashParts } from "./receipt-format.js";
 
-export const PUBKEY = "demo-pk";
+// Fixed TEST-ONLY Ed25519 key from RFC 8032 test vector 1. The private seed is
+// public because this browser demo requires deterministic fixtures only.
+export const PUBKEY = "d75a980182b10ab7d54bfed3c964073a0ee172f3daa62325af021a68f707511a";
+const TEST_PRIVATE_KEY_PKCS8_HEX =
+  "302e020100300506032b657004220420" +
+  "9d61b19deffd5a60ba844af492ec2cc44449c5697b326919703bac031cae7f60";
+const hexBytes = (hex) => Uint8Array.from(hex.match(/../g), (byte) => parseInt(byte, 16));
+const bytesHex = (bytes) => [...bytes].map((byte) => byte.toString(16).padStart(2, "0")).join("");
+let _testSigningKey = null;
+const _signedConfigs = new Map();
 
-// FNV-style hash, exact mirror of Seal.Hash.stableHashParts (for approval targets).
+async function testSigningKey() {
+  if (_testSigningKey) return _testSigningKey;
+  if (!globalThis.crypto?.subtle) throw new Error("Ed25519 signing requires WebCrypto SubtleCrypto");
+  _testSigningKey = globalThis.crypto.subtle.importKey(
+    "pkcs8", hexBytes(TEST_PRIVATE_KEY_PKCS8_HEX), { name: "Ed25519" }, false, ["sign"]);
+  return _testSigningKey;
+}
+
+// SHA-256 target commitment, exact mirror of Lean Seal.stableHashParts.
 export function stableHash(parts) {
-  let acc = 14695981039346656037n;
-  const M = 1099511628211n, MOD = 1n << 64n;
-  for (const ch of parts.join("|")) acc = (acc * M + BigInt(ch.codePointAt(0))) % MOD;
-  return acc;
+  return stableHashParts(parts);
 }
 
-// u64 targets exceed Number.MAX_SAFE_INTEGER -> serialize BigInt as exact JSON
-// integer literals (sentinel + strip quotes) so Lean's getNat reads them precisely.
-function stringifyBig(obj) {
-  return JSON.stringify(obj, (_k, v) => (typeof v === "bigint" ? `__BIG__${v}__BIG__` : v))
-    .replace(/"__BIG__(\d+)__BIG__"/g, "$1");
+export async function buildSignedConfig(config) {
+  const payload = JSON.stringify(config);
+  if (!_signedConfigs.has(payload)) {
+    _signedConfigs.set(payload, (async () => {
+      const signature = bytesHex(new Uint8Array(await globalThis.crypto.subtle.sign(
+        "Ed25519", await testSigningKey(), new TextEncoder().encode(payload))));
+      return { payload, signature, pubkey: PUBKEY,
+        envelope: JSON.stringify({ payload, signature }) };
+    })());
+  }
+  return _signedConfigs.get(payload);
 }
 
-export function buildEnvelope(payload, pubkey = PUBKEY) {
-  const compact = JSON.stringify(payload);
-  return JSON.stringify({ payload: compact, signature: `stub-ed25519:${pubkey}:${compact}` });
+export async function buildEnvelope(config) {
+  return (await buildSignedConfig(config)).envelope;
 }
 
 const safety = (tools) => ({ approval: { control_file: "X", ttl_seconds: 120 }, tools });
@@ -78,16 +98,16 @@ export const SCENARIOS = {
 
 const rpc = (tool, args, id = 1) => JSON.stringify({ jsonrpc: "2.0", id, method: "tools/call", params: { name: tool, arguments: args } });
 
-// Build the seal_host_step input JSON for a scenario (or a custom tool call).
+// Build the seal_decide step-input JSON for a scenario (or a custom tool call).
 // `votes` is the raw consensus votes-file text (NDJSON lines
 // `{"acceptor":<nat>,"value":"<tool>"}`); default "" is byte-identical to before, so
 // existing scenarios/conformance are unaffected.
 export function buildStepInput({ tool, args, approvals = [], now = 1000, votes = "", id = 1 }) {
-  return stringifyBig({ line: rpc(tool, args, id), now,
+  return JSON.stringify({ line: rpc(tool, args, id), now,
     approvals: approvals.map((t) => ({ target: t })), votes, grants: "", forecasts: "" });
 }
 
-// Parse seal_host_step output -> demo-friendly verdict.
+// Parse seal_decide output -> demo-friendly verdict.
 export function parseVerdict(raw, tool) {
   const v = JSON.parse(raw);
   if (v.error) return { verdict: "ERROR", reason: v.error, certs: [], tool, emitted: raw };

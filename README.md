@@ -76,7 +76,7 @@ Pick the call from the rail (a £40k payment, a destructive SQL drop, a replicat
 1. **The gauntlet.** A jailbroken agent's call animates through the gating kernels in series; each gate stamps it ALLOW and passes it on, or slams it DENY and destroys it (the DENY leads with the counterfactual, "£40,000 never left the account"). Clear every gate and the call leaves as a sealed certificate. Hit **↻ Run the same call again** and the path repeats, the certificate locking to the **same hash every time**: proof that does not flicker.
 2. **The policy knobs.** A handful of bounded controls (human approval, the 2-of-3 quorum rule, sign-offs 0 to 3, the store op, the call itself). Flip a knob and the verified kernel **re-decides live**; the affected gate flips ALLOW or DENY and a one-line causal readout carries the kernel's real reason. Scrub the sign-offs from 1 to 2 and the consensus gate flips DENY to ALLOW on the same call: real **verified quorum agreement** (majority check), not Paxos.
 
-Every verdict is **real**, computed live by the verified `seal-host` kernel compiled to WebAssembly (`public/wasm/seal.{js,wasm}`). `fixtures/captured.json` is the conformance fixture the WASM and native engines are both checked against.
+Every verdict is **real**, computed live by the verified `seal-host` kernel compiled to WebAssembly (`public/wasm/seal.{js,wasm}`). `fixtures/captured.json` is regenerated through that shipped browser evaluator with `node scripts/regenerate-fixtures.cjs`.
 
 ## Run it
 
@@ -122,8 +122,9 @@ SEAL_PUBLIC=$PWD/public PORT=8080 python3 server/decide_server.py
 **private** `seal-host` repo, never from source here. To regenerate (from a clean
 `seal-host` checkout): see `seal-host/wasm-spike/RESUME.md` — `build_closure.sh`
 then `build_wasm.sh` produce `build-core/seal.{js,wasm}`; copy them into
-`public/wasm/`. Conformance (WASM == native == `captured.json`) is gated by
-`seal-host/wasm-spike/{conformance,demo_conformance}.mjs`.
+`public/wasm/`. Regenerate the demo's verdict fixtures through the copied browser
+artifact with `node scripts/regenerate-fixtures.cjs`; `--check` fails if committed
+fixtures drift. The broader kernel differential remains in `seal-host/wasm-spike/`.
 
 The heavy dependencies (Rust + Lean + Mathlib) belong only to *building* the
 verified host, never to running either target. See `docs/BUILD.md`.
@@ -146,6 +147,6 @@ This repo is **private pre-award**. The `seal-host` kernels carry an ARIA Track 
 **v2 complete — live verdicts on both targets:**
 - **WASM in-browser** (`public/`, `public/wasm/seal.{js,wasm}`): the Gauntlet computes real verdicts from the verified kernel, in the browser, no backend. The re-run lock proves determinism live.
 - **Native** (`Dockerfile.live`, `server/decide_server.py`): the real `seal-host` binary decides behind `/api/decide`, conformance-gated byte-identical to the WASM build.
-- **Conformance-gated:** WASM verdict == native verdict == `fixtures/captured.json` for every demo scenario, cert hashes included (`seal-host/wasm-spike/demo_conformance.mjs`, 7/7; kernel-level 25/25).
+- **Fixture-gated:** `scripts/regenerate-fixtures.cjs --check` re-decides every published scenario through the shipped df42 WASM and checks the attack stays DENY while benign cases stay ALLOW.
 
 The Lean → C → emscripten WASM port lives in the private `seal-host` repo (`wasm-spike/`); only the compiled `.wasm`/`.js` + this shell are exposed.
