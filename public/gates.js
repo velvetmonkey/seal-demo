@@ -11,7 +11,7 @@
 export const KERNEL = {
   safety:      { name: "Safety",      sub: "approval gate",        stake: "Could move money or wreck data — needs a human's say-so." },
   temporal:    { name: "Temporal",    sub: "trace gate",           stake: "Replayed or out-of-order actions get caught here." },
-  consensus:   { name: "Consensus",   sub: "quorum gate",          stake: "A big action — needs a quorum of people, not one." },
+  consensus:   { name: "Consensus",   sub: "quorum gate",          stake: "A big action — needs a quorum of people, not one, to agree this tool may run." },
   convergence: { name: "Convergence", sub: "CRDT gate",            stake: "A write to shared data — must be provably safe to merge." },
   calibration: { name: "Calibration", sub: "calibration gate",     stake: "The claim must be as confident as the evidence allows." },
   linear:      { name: "Linear",      sub: "resource gate",        stake: "A one-time resource can't be spent twice." },
@@ -46,8 +46,8 @@ export function gatePolicy(kernel, config, tool) {
       const c = config.consensus || {};
       const hs = c.high_stakes || [];
       if (hs.includes(tool))
-        return `high-stakes — needs a 2-of-3 sign-off (roster ${(c.roster || []).join("/")})`;
-      return "high-stakes tools need a 2-of-3 quorum sign-off";
+        return `high-stakes — needs a 2-of-3 sign-off on the tool name (roster ${(c.roster || []).join("/")})`;
+      return "high-stakes tools need a 2-of-3 quorum sign-off on the tool name";
     }
     case "convergence": {
       const t = (config.convergence && config.convergence.tools || []).find((x) => x.tool === tool);
@@ -104,7 +104,7 @@ export function gateChecks(kernel, config, tool) {
     case "temporal":
       return "the event trace";
     case "consensus":
-      return "the 2-of-3 quorum sign-off";
+      return "the 2-of-3 quorum sign-off on the tool name";
     case "convergence": {
       const t = (config && config.convergence && config.convergence.tools || []).find((x) => x.tool === tool);
       return t ? `the “${t.op_arg}” operation` : "the replicated-store write";
@@ -128,7 +128,7 @@ export function gateResult(kernel, cert) {
     case "temporal":
       return allow ? "the event trace is clean" : "a forbidden sequence appears in the trace";
     case "consensus":
-      return allow ? "the 2-of-3 quorum signed off" : "the 2-of-3 quorum is missing";
+      return allow ? "the 2-of-3 quorum signed off — on the tool name, not this call's bytes" : "the 2-of-3 quorum is missing";
     case "convergence":
       return allow ? "a provably-convergent operation" : "a non-convergent op (last-writer-wins)";
     default:
