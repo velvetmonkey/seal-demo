@@ -7,40 +7,41 @@
 // verified verdict the demo narrates. Cert hashes are emitted by the kernel, not
 // encoded here.
 import { stableHashParts } from "./receipt-format.js";
+import nacl from "./vendor/nacl.js";
 
 // Fixed TEST-ONLY Ed25519 key from RFC 8032 test vector 1. The private seed is
 // public because this browser demo requires deterministic fixtures only.
 export const PUBKEY = "d75a980182b10ab7d54bfed3c964073a0ee172f3daa62325af021a68f707511a";
-const TEST_PRIVATE_KEY_PKCS8_HEX =
-  "302e020100300506032b657004220420" +
-  "9d61b19deffd5a60ba844af492ec2cc44449c5697b326919703bac031cae7f60";
+const TEST_SEED_HEX = "9d61b19deffd5a60ba844af492ec2cc44449c5697b326919703bac031cae7f60";
 const hexBytes = (hex) => Uint8Array.from(hex.match(/../g), (byte) => parseInt(byte, 16));
 const bytesHex = (bytes) => [...bytes].map((byte) => byte.toString(16).padStart(2, "0")).join("");
-let _testSigningKey = null;
 const _signedConfigs = new Map();
 
-async function testSigningKey() {
-  if (_testSigningKey) return _testSigningKey;
-  if (!globalThis.crypto?.subtle) throw new Error("Ed25519 signing requires WebCrypto SubtleCrypto");
-  _testSigningKey = globalThis.crypto.subtle.importKey(
-    "pkcs8", hexBytes(TEST_PRIVATE_KEY_PKCS8_HEX), { name: "Ed25519" }, false, ["sign"]);
-  return _testSigningKey;
-}
+// TweetNaCl secret key = seed(32) || public(32). Signing is pure JS and needs no
+// WebCrypto, so the gauntlet renders in every browser and any context (including
+// a plain-http LAN/tailnet IP, where crypto.subtle is undefined). Ed25519 is
+// deterministic (RFC 8032), so these bytes are identical to the WebCrypto ones for
+// the same key (verified 2026-07-14) and the kernel accepts them unchanged.
+const _secretKey = (() => {
+  const sk = new Uint8Array(64);
+  sk.set(hexBytes(TEST_SEED_HEX), 0);
+  sk.set(hexBytes(PUBKEY), 32);
+  return sk;
+})();
 
 // SHA-256 target commitment, exact mirror of Lean Seal.stableHashParts.
 export function stableHash(parts) {
   return stableHashParts(parts);
 }
 
+// Kept async so every existing caller (`await buildSignedConfig(...)`) is unchanged;
+// the body is synchronous now (nacl signs in-process, no promise, no WebCrypto).
 export async function buildSignedConfig(config) {
   const payload = JSON.stringify(config);
   if (!_signedConfigs.has(payload)) {
-    _signedConfigs.set(payload, (async () => {
-      const signature = bytesHex(new Uint8Array(await globalThis.crypto.subtle.sign(
-        "Ed25519", await testSigningKey(), new TextEncoder().encode(payload))));
-      return { payload, signature, pubkey: PUBKEY,
-        envelope: JSON.stringify({ payload, signature }) };
-    })());
+    const signature = bytesHex(nacl.sign.detached(new TextEncoder().encode(payload), _secretKey));
+    _signedConfigs.set(payload, { payload, signature, pubkey: PUBKEY,
+      envelope: JSON.stringify({ payload, signature }) });
   }
   return _signedConfigs.get(payload);
 }
