@@ -7,10 +7,21 @@ import { SCENARIOS, CFG_STANDARD, buildSignedConfig, buildStepInput, parseVerdic
 export const KERNEL_WASM_SHA256 = "df42cbada2297741bfeab99f222b96ac02e43a4ce8695b24922b425b8d66b1e8";
 
 let _mod = null;
+let _kernelBytes = null;
+// Fetch the compiled kernel bytes exactly once and share them: emscripten
+// instantiates from these bytes (via Module.wasmBinary, no second network round),
+// and audit.js re-hashes the SAME bytes for the "which binary ran" identity — so
+// the bytes hashed are literally the bytes run, on a single download.
+export async function kernelBytes() {
+  if (_kernelBytes) return _kernelBytes;
+  _kernelBytes = new Uint8Array(await (await fetch("wasm/seal.wasm")).arrayBuffer());
+  return _kernelBytes;
+}
 async function mod() {
   if (_mod) return _mod;
   if (!window.SealModule) throw new Error("wasm/seal.js not loaded (need <script src=\"wasm/seal.js\">)");
-  _mod = await window.SealModule({ print: () => {}, printErr: () => {} });
+  // Pass a copy so emscripten can never detach the buffer audit.js hashes.
+  _mod = await window.SealModule({ wasmBinary: (await kernelBytes()).slice(), print: () => {}, printErr: () => {} });
   return _mod;
 }
 

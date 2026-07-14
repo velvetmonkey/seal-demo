@@ -14,7 +14,7 @@
 // No new verification capability.
 import * as F from "./receipt-format.js";
 import { receiptDiff } from "./receipt-diff.js";
-import { decideConfig, decideSeq, decideSignedRaw } from "./seal-wasm.js";
+import { decideConfig, decideSeq, decideSignedRaw, kernelBytes } from "./seal-wasm.js";
 
 // sha256 of public/wasm/seal.wasm, pinned at commit time. The page re-hashes
 // the wasm it actually fetched and compares — this backs the README claim
@@ -25,7 +25,7 @@ export const SEAL_WASM_SHA256 = "df42cbada2297741bfeab99f222b96ac02e43a4ce8695b2
 let _identity = null;
 async function kernelIdentity() {
   if (_identity) return _identity;
-  const bytes = new Uint8Array(await (await fetch("wasm/seal.wasm")).arrayBuffer());
+  const bytes = await kernelBytes(); // shared single fetch (also used to instantiate)
   let computed;
   if (globalThis.crypto?.subtle) {
     const d = await crypto.subtle.digest("SHA-256", bytes);
