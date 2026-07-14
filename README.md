@@ -11,9 +11,9 @@ One command serves it and opens the browser. Click "Send the call" on the gauntl
 > kernel. It does not claim the proxy, auth, sandbox, or parser are unbypassable.
 > See "The honest claim" below.
 
-## Quick start (luxury 1-command showcase)
+## Quick start (1-command showcase)
 
-**One command (luxury showcase):**
+**One command:**
 
 ```sh
 bash scripts/showcase.sh
