@@ -4,6 +4,10 @@
 
 **Watch the verified kernel decide live in your browser: a scripted attack gets BLOCKED, a benign one ALLOWED. Click once, see the real math.**
 
+![seal-demo blocking a £40,000 payment: Safety and Temporal gates allow, the Consensus gate denies for a missing 2-of-3 quorum, and the call is BLOCKED with a seal hash over the exact call, config and verdict.](docs/img/gauntlet-blocked.png)
+
+<sub>A jailbroken agent's `payments.send` for £40,000, judged gate by gate on the page. Safety and Temporal allow it; Consensus denies — the 2-of-3 quorum is missing — so the call never leaves. The `seal` is a fingerprint of that exact call, config and verdict: same inputs, byte-identical seal. The footer states the boundary in frame — what is proven, what is merely trusted, and what is not claimed at all.</sub>
+
 No backend. The Lean-proven decision procedure runs in WASM. Every ALLOW/DENY and cert is computed on the page.
 
 One command serves it and opens the browser. Click "Send the call" on the gauntlet — the kernel judges gate by gate.
