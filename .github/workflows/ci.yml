@@ -1,0 +1,49 @@
+# SPDX-License-Identifier: Apache-2.0
+#
+# This repo had no CI at all until 2026-07-15. It ships a browser verifier that
+# tells visitors whether a receipt is authentic, and every check below already
+# existed and passed — there was simply nothing running them. The §11.1
+# unparseable-request rule was merged here the same day with its tests verified
+# by hand, which is exactly the arrangement this file exists to end.
+#
+# Every step here was confirmed green on the merge commit before this workflow
+# was written, so a red on arrival means a real regression, not a wishful gate.
+
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6.0.3
+      - uses: actions/setup-node@v6.4.0
+        with:
+          node-version: "22"
+
+      # Syntax-check every shipped browser module. No bundler here: these load
+      # straight into the page, so a parse error is a broken demo, not a build
+      # failure someone catches first.
+      - name: syntax check the shipped modules
+        run: |
+          for f in public/*.js; do node --check "$f"; done
+
+      # The verifier's own tests, including the §11.1 unparseable-request rule.
+      - run: node test/receipt-format.test.mjs
+
+      # Fixtures must be reproducible from their producer. --check regenerates
+      # and diffs rather than trusting what is committed.
+      - run: node scripts/regenerate-fixtures.cjs --check
+
+      # Vendored-kernel migration invariants.
+      - run: node scripts/verify-migration.cjs
+
+      # Claim blocks agree across surfaces. Note what this does and does not do:
+      # it proves the copies are CONSISTENT, never that they are TRUE. On
+      # 2026-07-15 this guard sat green across the fleet over a claim that had
+      # become false. Consistency is not truth; read the wording against the
+      # code when it changes.
+      - run: node scripts/claims-drift.mjs
