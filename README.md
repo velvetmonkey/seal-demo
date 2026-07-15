@@ -1,5 +1,7 @@
 # seal-demo
 
+[![CI](https://github.com/velvetmonkey/seal-demo/actions/workflows/ci.yml/badge.svg)](https://github.com/velvetmonkey/seal-demo/actions/workflows/ci.yml)
+
 **Watch the verified kernel decide live in your browser: a scripted attack gets BLOCKED, a benign one ALLOWED. Click once, see the real math.**
 
 No backend. The Lean-proven decision procedure runs in WASM. Every ALLOW/DENY and cert is computed on the page.
