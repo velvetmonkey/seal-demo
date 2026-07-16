@@ -37,6 +37,10 @@ jobs:
       # Pathological-number fail-closed teeth (1e9999999999 -> block, never passthrough).
       - run: node test/pathological-number.test.cjs
 
+      # Verify-profile self-check: this copy declares P-SELFAUDIT
+      # (seal-assurance-kit docs/VERIFY-PROFILES.md) and behaves on-profile.
+      - run: node test/verify-profile.test.mjs
+
       # Fixtures must be reproducible from their producer. --check regenerates
       # and diffs rather than trusting what is committed.
       - run: node scripts/regenerate-fixtures.cjs --check

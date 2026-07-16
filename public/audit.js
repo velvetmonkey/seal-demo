@@ -22,6 +22,18 @@ import { decideConfig, decideSeq, decideSignedRaw, kernelBytes } from "./seal-wa
 // proved kernels; the compile itself is trusted, not proved).
 export const SEAL_WASM_SHA256 = "ff1bfd68d7be51b6a395f94dfc46b2fb27ed11dc5833af6a84675f42f9730546";
 
+// Declared verification profile of THIS copy (seal-assurance-kit
+// docs/VERIFY-PROFILES.md): P-SELFAUDIT — producer self-audit, per the
+// honesty register above. Input scope is receipts THIS page just minted with
+// its own fixed test key; signed_config binding is checked; there is no
+// trust-anchor input, no independent authority claim, and the success class
+// is self-consistency (allGood) — deliberately NOT "verified". Foreign or
+// §11.1-shaped receipts are out of the advertised scope and must never reach
+// the success surface. The fleet differentials key their expected
+// agreement/divergence off this declaration; changing it is a design
+// decision, not a refactor.
+export const VERIFY_PROFILE = "P-SELFAUDIT";
+
 let _identity = null;
 async function kernelIdentity() {
   if (_identity) return _identity;
