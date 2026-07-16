@@ -34,6 +34,9 @@ jobs:
       # The verifier's own tests, including the §11.1 unparseable-request rule.
       - run: node test/receipt-format.test.mjs
 
+      # Pathological-number fail-closed teeth (1e9999999999 -> block, never passthrough).
+      - run: node test/pathological-number.test.cjs
+
       # Fixtures must be reproducible from their producer. --check regenerates
       # and diffs rather than trusting what is committed.
       - run: node scripts/regenerate-fixtures.cjs --check
