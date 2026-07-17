@@ -20,7 +20,7 @@ import { decideConfig, decideSeq, decideSignedRaw, kernelBytes } from "./seal-wa
 // the wasm it actually fetched and compares — this backs the README claim
 // that the in-browser sha256 shows which binary ran (a trusted compile of the
 // proved kernels; the compile itself is trusted, not proved).
-export const SEAL_WASM_SHA256 = "ff1bfd68d7be51b6a395f94dfc46b2fb27ed11dc5833af6a84675f42f9730546";
+export const SEAL_WASM_SHA256 = "a37901811df4767fd08142243622b8372254e6ec5bd2d3aca18f0e61d0f109af";
 
 // Declared verification profile of THIS copy (seal-assurance-kit
 // docs/VERIFY-PROFILES.md): P-SELFAUDIT — producer self-audit, per the
