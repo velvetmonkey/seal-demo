@@ -4,7 +4,7 @@ Copyright 2026 Ben Cassie / velvetmonkey
 This product includes the compiled seal kernel evaluator (public/wasm/seal.js,
 public/wasm/seal.wasm) — a black-box WebAssembly build of the verified seal
 mediation kernel (sha256
-a37901811df4767fd08142243622b8372254e6ec5bd2d3aca18f0e61d0f109af). The kernel's
+d7d81e277ba0b5e9df385129d86abf6f7469e6da2a65bb2ec35626caa44ea2be). The kernel's
 decision logic is the subject of public Lean 4 proofs. The compiled artifact is
 redistributed here as the public "black-box evaluator"; its source build pipeline
 is not included in this repository.
