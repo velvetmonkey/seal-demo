@@ -55,6 +55,13 @@ const unp = F.assembleReceiptV2({ ...UNP_FIELDS });
 let v = F.validateReceipt(unp);
 check("unparseable-request receipt validates clean (§11.2)",
   JSON.stringify([v.ok, v.version, v.errors]), JSON.stringify([true, "v2", []]));
+const current = { ...unp, record_type: "seal.authorization-decision", record_version: 2 };
+delete current.seal_receipt;
+v = F.validateReceipt(current);
+check("authorization-decision validates through v2",
+  JSON.stringify([v.ok, v.version, v.errors]), JSON.stringify([true, "v2", []]));
+v = F.validateReceipt({ ...current, request_sha256: "nothex" });
+check("authorization-decision retains v2 field checks", v.ok, false);
 for (const [k, vv] of [["tool", "db.execute"], ["arguments", {}],
   ["args_hash", "0".repeat(64)], ["canonical_request", "{}"],
   ["canonical_request_sha256", "0".repeat(64)]]) {
