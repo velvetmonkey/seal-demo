@@ -4,7 +4,7 @@
 // decides tool calls entirely in the browser — no backend.
 import { SCENARIOS, CFG_STANDARD, buildSignedConfig, buildStepInput, parseVerdict } from "./seal-config.js";
 
-export const KERNEL_WASM_SHA256 = "d7d81e277ba0b5e9df385129d86abf6f7469e6da2a65bb2ec35626caa44ea2be";
+export const KERNEL_WASM_SHA256 = "0b5e792500592b56847f70b1e27e47aecdc65023c7c59fd79695102c465f26ec";
 
 let _modPromise = null;
 let _kernelBytesPromise = null;

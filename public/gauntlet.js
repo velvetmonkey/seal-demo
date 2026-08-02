@@ -4,7 +4,7 @@
 // kernels in series. Every gate card is tied to the call (checks / rule / → result / cert), and
 // every verdict + cert hash is REAL from the kernel — never faked. No kernel source here.
 import { decideConfig, decideSeq, ready } from "./seal-wasm.js";
-import { SCENARIOS, CFG_TEMPORAL, stableHash } from "./seal-config.js";
+import { SCENARIOS, CFG_TEMPORAL, guardTarget } from "./seal-config.js";
 import { kname, gatePolicy, gateChecks, gateResult } from "./gates.js";
 import { renderAudit } from "./audit.js";
 
@@ -16,10 +16,9 @@ const T = { move: 240, evalPulse: 220, stamp: 240, kill: 320, seal: 300 };
 // real config bases, reused (never mutated) from the verified scenarios
 const PAY_BASE = SCENARIOS["pay-before"].config;               // safety + temporal, no consensus
 const PAY_CONSENSUS = SCENARIOS["pay-after"].config.consensus; // the 2-of-3 quorum rule
-const PAY_APPROVALS = SCENARIOS["pay-before"].approvals;       // [PAY_T]
+const PAY_APPROVALS = SCENARIOS["pay-before"].approvals;
 const DB_BASE = SCENARIOS["destructive-sql"].config;
 const STORE_BASE = SCENARIOS["store-safe"].config;
-const STORE_APPROVALS = SCENARIOS["store-safe"].approvals;     // [STORE_T]
 const SELF = SCENARIOS["self-approve"];                        // approve, flat-denied
 
 // ── one gate card. `decided` fills verdict/result/hash immediately; without it the card starts
@@ -72,12 +71,12 @@ function certVector(res) { return JSON.stringify((res.certs || []).map((c) => c.
     if (st.call === "db") {
       const sql = "drop table users";
       return { config: DB_BASE, tool: "db.execute", args: { database: "prod", sql },
-               approvals: st.approval ? [stableHash(["db.execute", "db", "prod", "write", sql])] : [], votes: "",
+               approvals: st.approval ? [guardTarget("db.execute", { database: "prod", sql })] : [], votes: "",
                stopped: "The production users table is still there.", won: "The destructive query ran — sealed, because a human approved it." };
     }
     if (st.call === "temporal") {
-      const dbA = stableHash(["db.execute", "db", "prod", "write", "drop table users"]);
-      const revokeA = stableHash(["session.revoke", "revoke"]);
+      const dbA = guardTarget("db.execute", { database: "prod", sql: "drop table users" });
+      const revokeA = guardTarget("session.revoke", {});
       const dbStep = { tool: "db.execute", args: { database: "prod", sql: "drop table users" }, approvals: [dbA] };
       const seq = st.revoked ? [{ tool: "session.revoke", args: {}, approvals: [revokeA] }, dbStep] : [dbStep];
       return { config: CFG_TEMPORAL, tool: "db.execute", args: dbStep.args, seq,
@@ -86,7 +85,7 @@ function certVector(res) { return JSON.stringify((res.certs || []).map((c) => c.
     }
     if (st.call === "store") {
       return { config: STORE_BASE, tool: "store.update", args: { op: st.op, key: "k1" },
-               approvals: st.approval ? STORE_APPROVALS : [], votes: "",
+               approvals: st.approval ? [guardTarget("store.update", { op: st.op, key: "k1" })] : [], votes: "",
                stopped: "The corrupting write never landed — replicas stay consistent.", won: "A provably-convergent write — sealed." };
     }
     return { config: SELF.config, tool: "approve", args: { target: 1 }, approvals: [], votes: "",

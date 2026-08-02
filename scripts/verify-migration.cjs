@@ -46,8 +46,8 @@ const check = (label, ok) => { console.log(`${ok ? "PASS" : "FAIL"}  ${label}`);
   const rejected = await A.verifyRunReceipt(tampered);
   check("tampered signature rejected", rejected.signature_valid === false && rejected.allGood === false);
 
-  const dbA = C.stableHash(["db.execute", "db", "prod", "write", "drop table users"]);
-  const revokeA = C.stableHash(["session.revoke", "revoke"]);
+  const dbA = C.guardTarget("db.execute", { database: "prod", sql: "drop table users" });
+  const revokeA = C.guardTarget("session.revoke", {});
   const seq = [
     { tool: "session.revoke", args: {}, approvals: [revokeA] },
     { tool: "db.execute", args: { database: "prod", sql: "drop table users" }, approvals: [dbA] },
