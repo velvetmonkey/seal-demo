@@ -62,6 +62,14 @@ check("authorization-decision validates through v2",
   JSON.stringify([v.ok, v.version, v.errors]), JSON.stringify([true, "v2", []]));
 v = F.validateReceipt({ ...current, request_sha256: "nothex" });
 check("authorization-decision retains v2 field checks", v.ok, false);
+v = F.validateReceipt({ ...unp, record_type: "seal.authorization-decision", record_version: 2 });
+check("conflicting version-discriminator families are refused before classification",
+  v.errors.some((e) => e.includes("conflicting version discriminators: seal_receipt + record_type/record_version")), true);
+const duplicateDocument = JSON.stringify(unp).replace(
+  '"seal_receipt":"v2"', '"seal_receipt":"v2","seal_receipt":"v2"');
+v = F.validateReceipt(duplicateDocument);
+check("duplicated discriminator in received document is refused",
+  v.document_checked === true && v.errors.some((e) => e.includes('version discriminator "seal_receipt" occurs 2 times')), true);
 for (const [k, vv] of [["tool", "db.execute"], ["arguments", {}],
   ["args_hash", "0".repeat(64)], ["canonical_request", "{}"],
   ["canonical_request_sha256", "0".repeat(64)]]) {
