@@ -25,7 +25,7 @@ One command serves it and opens the browser. Click "Send the call" on the gauntl
 bash scripts/showcase.sh
 ```
 
-One command serves the static kernel demo briefly and prints real page content (including "Proven — ALLOW iff...", "the decision is a proven function", verdict, kernel, trusted TCB notes). Open the URL for the interactive gauntlet that watches the verified WASM kernel decide live BLOCK/ALLOW. (Equivalent to ./demo.sh --no-open.)
+One command serves the static kernel demo briefly and prints real page content (including "Proven — ALLOW iff...", "the decision is a proven function", verdict, kernel, trusted TCB notes). For the interactive gauntlet, serve the page persistently with `./demo.sh` (it prints the URL and keeps serving until Ctrl-C) and watch the WASM kernel decide live BLOCK/ALLOW. (`showcase.sh` is the non-interactive spot-check: it serves briefly, curls the page, and exits.)
 
 (If no ./demo.sh: `cd public && python3 -m http.server 8080`, visit http://localhost:8080 — NOT file://.)
 
@@ -56,11 +56,11 @@ It also does **not** claim the compiled kernel provably equals the Lean model: `
 These are the four explicit places where Seal's proofs stop; each is a strength because the boundary is known and closed by a named mechanism outside the kernel. Canonical copy: [docs/LIMITATIONS.md](docs/LIMITATIONS.md); `scripts/claims-drift.mjs` fails the build if this mirror drifts.
 
 <!-- trust-boundaries:begin -->
-These are the four explicit places where Seal's proofs stop. They are strengths because the boundaries are known and each is closed by a named, auditable mechanism outside the kernel.
+These are the four explicit places where Seal's proofs stop. They are strengths because the boundaries are known and each has a named closure path outside the kernel — closed where stated, still open where stated.
 
-1. Byzantine / non-participating replica — non-bypass proven for replicas that RUN the gate; a replica not running seal is outside the TCB by definition. Closes via: attestation of the sealed core.
-2. Egress after allow (P6) — seal mediates the DECISION and records it, not the downstream effect. Closes via: compose with an egress proxy; decision gate by design. (Already in RUST_BRIDGE.md.)
-3. Model vs compiled binary — proofs bind the routing core the code delegates to (Ffi.stepImpl → composed kernels), not a byte-for-byte proof of the compiled wasm; strongest in category. Closes via: the binary differential (Lane C), a wasm-vs-Lean-decide oracle.
+1. Byzantine / non-participating replica — non-bypass proven for replicas that RUN the gate; a replica not running seal is outside the TCB by definition. Named closure path (not yet implemented): attestation of the sealed core.
+2. Egress after allow (P6) — seal mediates the DECISION and records it, not the downstream effect. Closes via: compose with an egress proxy; decision gate by design. (Already in seal-host's RUST_BRIDGE.md.)
+3. Model vs compiled binary — proofs bind the routing core the code delegates to (Ffi.stepImpl → composed kernels), not a byte-for-byte proof of the compiled wasm. Closure path (Lane C, still open): a wasm-vs-Lean-decide binary differential.
 4. Partition liveness — safety (no double-spend) holds unconditionally under partition; liveness is conditional, inherited from crdt-lean. The correct safety-over-availability tradeoff.
 <!-- trust-boundaries:end -->
 
@@ -69,7 +69,7 @@ These are the four explicit places where Seal's proofs stop. They are strengths 
 A public demo must not run a live frontier model (cost, abuse, nondeterminism, and the night it refuses to misbehave on cue it dies on stage). So:
 
 - **Attacks are pre-scripted offline** by a human, once (`fixtures/`). That's the agent's reasoning plus the exact tool call it attempts.
-- **The kernel decides live, in your browser.** The verified `seal-host` kernel is compiled to WebAssembly (`public/wasm/seal.wasm`) and runs the real `seal_decide` at the `sealEvaluate` seam — **no backend, no replay**. Every ALLOW/DENY and every cert hash on the page is computed live by the proven decision procedure, identically every run. The same kernel also runs natively behind `POST /api/decide` (Docker live mode); the two engines are **conformance-gated** to return byte-identical verdicts and certs.
+- **The kernel decides live, in your browser.** The verified `seal-host` kernel is compiled to WebAssembly (`public/wasm/seal.wasm`) and runs the real `seal_decide` entry point (`public/seal-wasm.js` calls it via `ccall`) — **no backend, no replay**. Every ALLOW/DENY and every cert hash on the page is computed live by the proven decision procedure, identically every run. The same kernel also runs natively behind `POST /api/decide` (Docker live mode); the two engines are held to byte-identical verdicts and certs by the conformance bridge upstream in `seal-host` (`scripts/conformance_bridge.mjs`) — this repo’s own CI checks copy-consistency only, it does not re-run that bridge.
 
 The AI was always just the narrative wrapper. The kernel is the substance, and the substance is the AI-free part.
 
@@ -106,7 +106,7 @@ is decided live in-browser, no backend.
 
 The actual `seal-host` binary runs behind `POST /api/decide` for direct API-level
 verification. The browser page itself decides via the in-browser WASM build of the
-same kernel; the two are conformance-gated byte-identical. Bundles the private
+same kernel; byte-identity between the two is established by the upstream seal-host conformance bridge, not re-checked here. Bundles the private
 binary, so this image is **local only, do not publish it**.
 
 ```sh
@@ -137,7 +137,7 @@ verified host, never to running either target. See `docs/BUILD.md`.
 
 ## Delivery spectrum
 
-One verified artifact, four modes (same WASM core):
+One kernel artifact — a trusted compile of the proven decision procedure (the T3 caveat above) — four modes (same WASM core):
 
 - **browser** — this demo
 - **embedded** — the licensed PDP component, dropped into the host process (lowest latency, no phone-home)
@@ -152,7 +152,7 @@ This repo is **private pre-award**. The `seal-host` kernels carry an ARIA Track 
 
 **v2 complete — live verdicts on both targets:**
 - **WASM in-browser** (`public/`, `public/wasm/seal.{js,wasm}`): the Gauntlet computes real verdicts from the verified kernel, in the browser, no backend. The re-run lock proves determinism live.
-- **Native** (`Dockerfile.live`, `server/decide_server.py`): the real `seal-host` binary decides behind `/api/decide`, conformance-gated byte-identical to the WASM build.
-- **Fixture-gated:** `scripts/regenerate-fixtures.cjs --check` re-decides every published scenario through the shipped WASM kernel (`public/wasm/seal.wasm`, sha256 `0b5e792500592b…`) and checks the attack stays DENY while benign cases stay ALLOW.
+- **Native** (`Dockerfile.live`, `server/decide_server.py`): the real `seal-host` binary decides behind `/api/decide`, byte-identical to the WASM build per the upstream seal-host conformance bridge.
+- **Fixture-gated:** `scripts/regenerate-fixtures.cjs --check` re-decides every published scenario through the shipped WASM kernel (`public/wasm/seal.wasm`, sha256 `28bb3ae71985…`) and checks the attack stays DENY while benign cases stay ALLOW.
 
 The Lean → C → emscripten WASM port lives in the private `seal-host` repo (`wasm-spike/`); only the compiled `.wasm`/`.js` + this shell are exposed.
