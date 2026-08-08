@@ -9,22 +9,23 @@ The browser demo only needs the runtime evaluator. The prover never ships to the
 
 ## Toolchain (dev box, not the demo host)
 
-Missing on the assistant box; install where `seal-host` is built:
+Install where `seal-host` is built (never needed to run this demo):
 
-- `rustc` + `cargo` (the seal runtime)
-- `wasm-pack` / `wasm-bindgen` (Rust → wasm32)
-- `clang` + Emscripten (`emcc`) (Lean → C → WASM path)
-- `elan` / `lean` / `lake` (the proof side, already present on the prover box)
+- `clang` + Emscripten (`emcc`) — the Lean → C → WASM path that produces the shipped evaluator
+- `elan` / `lean` / `lake` — the proof side
+- `rustc` + `cargo` — only for the native Target B binary, not for the WASM build
 
-## Pipeline
+## Pipeline (the one that ships)
 
-1. In `seal-host`, extract the policy decision procedure (pure function: `request × policy → verdict + proof`) from the Lean kernel via the C backend, **or** expose it through the Rust runtime.
-2. Compile to WASM:
-   - Rust path: `wasm-pack build --target web` → `pkg/seal_pdp.wasm` + JS bindings.
-   - Lean→C→WASM path: `emcc` the generated C with the Lean runtime, export the evaluator entrypoint.
-3. Drop the `.wasm` + bindings into `public/`.
-4. Replace the seam: in `public/index.html`, swap the stub `sealEvaluate()` for a call into the WASM module. Same signature: `(request, policy) → { verdict, proof }`.
-5. Serve `public/` as a static site (GitHub Pages / Vercel). No backend, no AI.
+1. In the private `seal-host` repo, `wasm-spike/build_closure.sh` then `build_wasm.sh`
+   compile the Lean kernel via the C backend with Emscripten, producing
+   `build-core/seal.{js,wasm}` (see `seal-host/wasm-spike/RESUME.md`).
+2. Copy both into `public/wasm/`. `public/seal-wasm.js` pins the wasm's SHA-256 and
+   calls the exported `seal_decide` entry point via `ccall` — that integration shipped;
+   there is no stub left to replace.
+3. Regenerate the verdict fixtures through the copied artifact
+   (`node scripts/regenerate-fixtures.cjs`; `--check` in CI).
+4. Serve `public/` as a static site. No backend, no AI.
 
 ## Recording fixtures (the "filmed" attacks)
 
