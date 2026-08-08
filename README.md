@@ -153,6 +153,6 @@ This repo is **private pre-award**. The `seal-host` kernels carry an ARIA Track 
 **v2 complete — live verdicts on both targets:**
 - **WASM in-browser** (`public/`, `public/wasm/seal.{js,wasm}`): the Gauntlet computes real verdicts from the verified kernel, in the browser, no backend. The re-run lock proves determinism live.
 - **Native** (`Dockerfile.live`, `server/decide_server.py`): the real `seal-host` binary decides behind `/api/decide`, conformance-gated byte-identical to the WASM build.
-- **Fixture-gated:** `scripts/regenerate-fixtures.cjs --check` re-decides every published scenario through the shipped df42 WASM and checks the attack stays DENY while benign cases stay ALLOW.
+- **Fixture-gated:** `scripts/regenerate-fixtures.cjs --check` re-decides every published scenario through the shipped WASM kernel (`public/wasm/seal.wasm`, sha256 `0b5e792500592b…`) and checks the attack stays DENY while benign cases stay ALLOW.
 
 The Lean → C → emscripten WASM port lives in the private `seal-host` repo (`wasm-spike/`); only the compiled `.wasm`/`.js` + this shell are exposed.
