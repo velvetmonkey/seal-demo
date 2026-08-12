@@ -106,8 +106,8 @@ is decided live in-browser, no backend.
 
 The actual `seal-host` binary runs behind `POST /api/decide` for direct API-level
 verification. The browser page itself decides via the in-browser WASM build of the
-same kernel; byte-identity between the two is established by the upstream seal-host conformance bridge, not re-checked here. Bundles the private
-binary, so this image is **local only, do not publish it**.
+same kernel; byte-identity between the two is established by the upstream seal-host conformance bridge, not re-checked here. Bundles a locally
+supplied native binary, so this image is **local only and is not part of this repository's release artifact**.
 
 ```sh
 scripts/prepare-runtime.sh        # copies the seal-host binary into runtime/ (build it first)
@@ -125,7 +125,7 @@ SEAL_PUBLIC=$PWD/public PORT=8080 python3 server/decide_server.py
 ### Rebuilding the WASM evaluator
 
 `public/wasm/seal.{js,wasm}` is the compiled black-box evaluator — built from the
-**private** `seal-host` repo, never from source here. To regenerate (from a clean
+public `seal-host` repo, never from source here. To regenerate (from a clean
 `seal-host` checkout): see `seal-host/wasm-spike/RESUME.md` — `build_closure.sh`
 then `build_wasm.sh` produce `build-core/seal.{js,wasm}`; copy them into
 `public/wasm/`. Regenerate the demo's verdict fixtures through the copied browser
@@ -144,9 +144,10 @@ One kernel artifact — a trusted compile of the proven decision procedure (the 
 - **edge** — Cloudflare / Fastly / Vercel (all run WASM), sub-ms verdicts on the agent's hot path, no central chokepoint
 - **native** — full production server
 
-## Publication boundary (read before flipping public)
+## Publication boundary
 
-This repo is **private pre-award**. The `seal-host` kernels carry an ARIA Track 1 covenant: only the **spec layer** (theorem statements, threat model, TCB) publishes ahead of submission; **proof sources at grant kickoff**; the **implementation stays under a 12-month commercialisation clawback**. When this demo goes public it ships only the **compiled black-box evaluator + this shell** — never the kernel or host source.
+This repository is public. It ships the compiled evaluator and demo shell; the kernel and host
+sources remain in their own public repositories and are not duplicated here.
 
 ## Status
 
@@ -155,4 +156,4 @@ This repo is **private pre-award**. The `seal-host` kernels carry an ARIA Track 
 - **Native** (`Dockerfile.live`, `server/decide_server.py`): the real `seal-host` binary decides behind `/api/decide`, byte-identical to the WASM build per the upstream seal-host conformance bridge.
 - **Fixture-gated:** `scripts/regenerate-fixtures.cjs --check` re-decides every published scenario through the shipped WASM kernel (`public/wasm/seal.wasm`, sha256 `28bb3ae71985…`) and checks the attack stays DENY while benign cases stay ALLOW.
 
-The Lean → C → emscripten WASM port lives in the private `seal-host` repo (`wasm-spike/`); only the compiled `.wasm`/`.js` + this shell are exposed.
+The Lean → C → emscripten WASM port lives in the public `seal-host` repo (`wasm-spike/`); this demo release packages its tracked compiled `.wasm`/`.js` and shell, not the host source tree.
