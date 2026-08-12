@@ -1,8 +1,8 @@
 # seal-demo LIVE — runs the REAL verified seal-host binary behind a thin API.
 # Verdicts are computed live by the actual Lean-verified kernels, not replayed.
 #
-# PRIVATE / LOCAL ONLY: this image bundles the seal-host binary, which is the
-# private pre-award implementation. Do NOT publish this image. The public,
+# LOCAL IMAGE ONLY: this image bundles a locally built or downloaded seal-host
+# release artifact. Do NOT publish this image. The public,
 # deployable demo is the static one (Dockerfile) — replay, no binary.
 #
 # Needs runtime/ populated first: scripts/prepare-runtime.sh

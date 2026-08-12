@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# Populate runtime/ with the private seal-host binary + MCP mock so the LIVE
+# Populate runtime/ with the locally built or downloaded seal-host binary + MCP mock so the LIVE
 # Docker image (Dockerfile.live) can run the real verified kernel.
-# runtime/ is gitignored: the binary is the private pre-award implementation.
+# runtime/ is gitignored: the binary is a local release artifact.
 set -euo pipefail
 
 SEAL_HOST="${SEAL_HOST_DIR:-$HOME/src/seal-host}"
