@@ -17,7 +17,7 @@ Install where `seal-host` is built (never needed to run this demo):
 
 ## Pipeline (the one that ships)
 
-1. In the private `seal-host` repo, `wasm-spike/build_closure.sh` then `build_wasm.sh`
+1. In the public `seal-host` repo, `wasm-spike/build_closure.sh` then `build_wasm.sh`
    compile the Lean kernel via the C backend with Emscripten, producing
    `build-core/seal.{js,wasm}` (see `seal-host/wasm-spike/RESUME.md`).
 2. Copy both into `public/wasm/`. `public/seal-wasm.js` pins the wasm's SHA-256 and
