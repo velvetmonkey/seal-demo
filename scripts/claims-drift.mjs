@@ -27,6 +27,7 @@ const CLAIM_MANIFEST = [
   ["docs/LIMITATIONS.md", "Lane C runs a wasm-vs-interpreted-Lean differential in seal-host CI over a fixed corpus; it is evidence over that corpus, not a universal binary-equals-model proof."],
 ];
 
+// FAMILY-SHARED:BEGIN core
 let fatal = false;
 
 function fatalError(message) {
@@ -54,6 +55,7 @@ function extract(file, begin, end) {
   }
   return text.slice(i + begin.length, j);
 }
+// FAMILY-SHARED:END core
 
 // Per-line trim + drop blanks. The claim text contains no HTML tags.
 function normalise(block) {
@@ -64,6 +66,7 @@ function normalise(block) {
     .join("\n");
 }
 
+// FAMILY-SHARED:BEGIN evaluation
 let drift = false;
 for (const blk of BLOCKS) {
   const canonicalBlock = extract(blk.canonical, blk.begin, blk.end);
@@ -118,3 +121,4 @@ if (fatal) {
 if (!drift && !fatal) {
   console.log("all claim blocks in sync across all surfaces");
 }
+// FAMILY-SHARED:END evaluation
