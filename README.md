@@ -53,14 +53,14 @@ It also does **not** claim the compiled kernel provably equals the Lean model: `
 
 ## Trust boundaries
 
-These are the four explicit places where Seal's proofs stop; each is a strength because the boundary is known and closed by a named mechanism outside the kernel. Canonical copy: [docs/LIMITATIONS.md](docs/LIMITATIONS.md); `scripts/claims-drift.mjs` fails the build if this mirror drifts.
+These are the four explicit places where Seal's proofs stop; each boundary is known and has a named closure path outside the kernel, closed or open as stated below. Canonical copy: [docs/LIMITATIONS.md](docs/LIMITATIONS.md); `scripts/claims-drift.mjs` fails the build if this mirror drifts.
 
 <!-- trust-boundaries:begin -->
 These are the four explicit places where Seal's proofs stop. They are strengths because the boundaries are known and each has a named closure path outside the kernel — closed where stated, still open where stated.
 
 1. Byzantine / non-participating replica — non-bypass proven for replicas that RUN the gate; a replica not running seal is outside the TCB by definition. Named closure path (not yet implemented): attestation of the sealed core.
 2. Egress after allow (P6) — seal mediates the DECISION and records it, not the downstream effect. Closes via: compose with an egress proxy; decision gate by design. (Already in seal-host's RUST_BRIDGE.md.)
-3. Model vs compiled binary — proofs bind the routing core the code delegates to (Ffi.stepImpl → composed kernels), not a byte-for-byte proof of the compiled wasm. Closure path (Lane C, still open): a wasm-vs-Lean-decide binary differential.
+3. Model vs compiled binary — proofs bind the routing core the code delegates to (Ffi.stepImpl → composed kernels), not a byte-for-byte proof of the compiled wasm. Lane C runs a wasm-vs-interpreted-Lean differential in seal-host CI over a fixed corpus; it is evidence over that corpus, not a universal binary-equals-model proof.
 4. Partition liveness — safety (no double-spend) holds unconditionally under partition; liveness is conditional, inherited from crdt-lean. The correct safety-over-availability tradeoff.
 <!-- trust-boundaries:end -->
 
